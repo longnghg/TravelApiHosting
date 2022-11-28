@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="5.0.17" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Travel.Context\Travel.Context.csproj" />
+    <ProjectReference Include="..\Travel.Shared\Travel.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="PrUtility">
+      <HintPath>..\Travel.Shared\PrUtility.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

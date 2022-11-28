@@ -1,0 +1,12 @@
+{
+  "web": {
+    "client_id": "517823534900-vi6m9v7lagkph05og91tfhrfpn4h5une.apps.googleusercontent.com",
+    "project_id": "spartan-apricot-367403",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "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",
+    "redirect_uris": [ "https://localhost:44394", "http://127.0.0.1/authorize/", "http://localhost/authorize/" ],
+    "javascript_origins": [ "https://localhost:44394" ]
+  }
+}

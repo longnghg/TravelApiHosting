@@ -1,0 +1,7 @@
+*.vsidx
+**/bin/Debug/
+**/bin/Release/
+**/obj/
+**/.vs/
+
+TravelApi/wwwroot/
