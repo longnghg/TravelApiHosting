@@ -14,9 +14,9 @@ namespace Travel.Data.Interfaces
         string CheckBeforSave(JObject frmData, ref Notification _message, bool isUpdate);
         Response GetsRole(bool isDelete);
         Response SearchRole(JObject frmData);
-        Response CreateRole(CreateRoleViewModel input);
-        Response UpdateRole(UpdateRoleViewModel input);
-        Response DeleteRole(int idRole);
-        Response RestoreRole(int idRole);
+        Response CreateRole(CreateRoleViewModel input, string emailUser);
+        Response UpdateRole(UpdateRoleViewModel input, string emailUser);
+        Response DeleteRole(int idRole, string emailUser);
+        Response RestoreRole(int idRole, string emailUser);
     }
 }

@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -21,10 +22,15 @@ namespace TravelApi.Controllers
         private Notification message;
         private Response res;
 
-        public ServiceController(IService service)
+        public ServiceController(IService service, ILog log)
         {
             _serviceRes = service;
             res = new Response();
+        }
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
         }
         #region hotel
         [HttpPost]
@@ -37,7 +43,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateHotelViewModel>(result);
-                res = _serviceRes.CreateHotel(createObj);
+                
+                var emailUser = GetEmailUserLogin().Value;
+                res = _serviceRes.CreateHotel(createObj, emailUser);
             }
             else
             {
@@ -72,7 +80,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateHotelViewModel>(result);
-                res = _serviceRes.UpdateHotel(updateObj);
+                
+                var emailUser = GetEmailUserLogin().Value;
+                res = _serviceRes.UpdateHotel(updateObj, emailUser);
             }
             else
             {
@@ -102,7 +112,9 @@ namespace TravelApi.Controllers
         [Route("delete-hotel")]
         public object DeleteHotel(Guid idHotel, Guid idUser)
         {
-            res = _serviceRes.DeleteHotel(idHotel, idUser);
+          
+            var emailUser = GetEmailUserLogin().Value;
+            res = _serviceRes.DeleteHotel(idHotel, idUser, emailUser);
             return Ok(res);
         }
         [HttpPut]
@@ -110,7 +122,9 @@ namespace TravelApi.Controllers
         [Route("restore-hotel")]
         public object RestoreHotel(Guid idHotel, Guid idUser)
         {
-            res = _serviceRes.RestoreHotel(idHotel, idUser);
+          
+            var emailUser = GetEmailUserLogin().Value;
+            res = _serviceRes.RestoreHotel(idHotel, idUser, emailUser);
             return Ok(res);
         }
         #endregion
@@ -143,7 +157,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateRestaurantViewModel>(result);
-                res = _serviceRes.CreateRestaurant(createObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _serviceRes.CreateRestaurant(createObj, emailUser);
             }
             else
             {
@@ -174,7 +189,8 @@ namespace TravelApi.Controllers
         [Route("delete-restaurant")]
         public object DeleteRestaurant(Guid idRestaurant, Guid idUser)
         {
-            res = _serviceRes.DeleteRestaurant(idRestaurant, idUser);
+            var emailUser = GetEmailUserLogin().Value;
+             res = _serviceRes.DeleteRestaurant(idRestaurant, idUser, emailUser);
             return Ok(res);
         }
 
@@ -189,7 +205,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateRestaurantViewModel>(result);
-                res = _serviceRes.UpdateRestaurant(updateObj);
+                  var emailUser = GetEmailUserLogin().Value;
+                res = _serviceRes.UpdateRestaurant(updateObj, emailUser);
+                
             }
             else
             {
@@ -202,7 +220,9 @@ namespace TravelApi.Controllers
         [Route("restore-restaurant")]
         public object RestoreRestaurant(Guid idRestaurant, Guid idUser)
         {
-            res = _serviceRes.RestoreRestaurant(idRestaurant, idUser);
+           
+            var emailUser = GetEmailUserLogin().Value;
+            res = _serviceRes.RestoreRestaurant(idRestaurant, idUser, emailUser);
             return Ok(res);
         }
         #endregion
@@ -236,7 +256,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreatePlaceViewModel>(result);
-                res = _serviceRes.CreatePlace(createObj);
+              
+                var emailUser = GetEmailUserLogin().Value;
+                res = _serviceRes.CreatePlace(createObj, emailUser);
             }
             else
             {
@@ -254,7 +276,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdatePlaceViewModel>(result);
-                res = _serviceRes.UpdatePlace(updateObj);
+              
+                var emailUser = GetEmailUserLogin().Value;
+                res = _serviceRes.UpdatePlace(updateObj, emailUser);
             }
             else
             {
@@ -284,7 +308,9 @@ namespace TravelApi.Controllers
         [Route("delete-place")]
         public object DeletePlace(Guid idPlace, Guid idUser)
         {
-            res = _serviceRes.DeletePlace(idPlace, idUser);
+          
+            var emailUser = GetEmailUserLogin().Value;
+            res = _serviceRes.DeletePlace(idPlace, idUser, emailUser);
             return Ok(res); 
         }
 
@@ -293,7 +319,9 @@ namespace TravelApi.Controllers
         [Route("restore-place")]
         public object RestorePlace(Guid idPlace, Guid idUser)
         {
-            res = _serviceRes.RestorePlace(idPlace, idUser);
+           
+            var emailUser = GetEmailUserLogin().Value;
+            res = _serviceRes.RestorePlace(idPlace, idUser, emailUser);
             return Ok(res);
         }
         #endregion
@@ -307,14 +335,14 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
-        [HttpPost]
-        [Authorize]
-        [Route("search-hotel-waiting")]
-        public object SearchHotelWaiting([FromBody] JObject frmData)
-        {
-            res = _serviceRes.SearchHotelWaiting(frmData);
-            return Ok(res);
-        }
+        //[HttpPost]
+        //[Authorize]
+        //[Route("search-hotel-waiting")]
+        //public object SearchHotelWaiting([FromBody] JObject frmData)
+        //{
+        //    res = _serviceRes.SearchHotelWaiting(frmData);
+        //    return Ok(res);
+        //}
 
         [HttpPost]
         [Authorize]
@@ -332,22 +360,22 @@ namespace TravelApi.Controllers
             res = _serviceRes.SearchRestaurant(frmData);
             return Ok(res); 
         }
-        [HttpPost]
-        [Authorize]
-        [Route("search-place-waiting")]
-        public object SearchPlaceWaiting([FromBody] JObject frmData)
-        {
-            res = _serviceRes.SearchPlaceWaiting(frmData);
-            return Ok(res);
-        }
+        //[HttpPost]
+        //[Authorize]
+        //[Route("search-place-waiting")]
+        //public object SearchPlaceWaiting([FromBody] JObject frmData)
+        //{
+        //    res = _serviceRes.SearchPlaceWaiting(frmData);
+        //    return Ok(res);
+        //}
 
-        [HttpPost]
-        [Authorize]
-        [Route("search-restaurant-waiting")]
-        public object SearchRestaurantWaiting([FromBody] JObject frmData)
-        {
-            res = _serviceRes.SearchRestaurantWaiting(frmData);
-            return Ok(res);
-        }
+        //[HttpPost]
+        //[Authorize]
+        //[Route("search-restaurant-waiting")]
+        //public object SearchRestaurantWaiting([FromBody] JObject frmData)
+        //{
+        //    res = _serviceRes.SearchRestaurantWaiting(frmData);
+        //    return Ok(res);
+        //}
     }
 }

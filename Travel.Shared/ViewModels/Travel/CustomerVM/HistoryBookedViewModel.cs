@@ -29,6 +29,8 @@ namespace Travel.Shared.ViewModels.Travel.CustomerVM
         private string fromPlace;
         private string toPlace;
 
+        private bool isSendFeedBack;
+
         public long DepartureDate { get => departureDate; set => departureDate = value; }
         public long ReturnDate { get => returnDate; set => returnDate = value; }
         public int ValuePromotion { get => valuePromotion; set => valuePromotion = value; }
@@ -46,5 +48,6 @@ namespace Travel.Shared.ViewModels.Travel.CustomerVM
         public string FromPlace { get => fromPlace; set => fromPlace = value; }
         public string ToPlace { get => toPlace; set => toPlace = value; }
         public string IdTourBooking { get => idTourBooking; set => idTourBooking = value; }
+        public bool IsSendFeedBack { get => isSendFeedBack; set => isSendFeedBack = value; }
     }
 }

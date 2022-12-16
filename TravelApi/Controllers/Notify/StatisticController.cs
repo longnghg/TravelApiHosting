@@ -16,12 +16,14 @@ namespace TravelApi.Controllers.Notify
     public class StatisticController : ControllerBase
     {
         private IStatistic _statistic;
+        private ITourBooking _tourbooking;
         private Response res;
 
-        public StatisticController(IStatistic statistic)
+        public StatisticController(IStatistic statistic, ITourBooking tourbooking)
         {
             _statistic = statistic;
             res = new Response();
+            _tourbooking = tourbooking;
         }
 
         [HttpGet]
@@ -32,7 +34,14 @@ namespace TravelApi.Controllers.Notify
             res = _statistic.StatisticTourBookingFromDateToDate(fromDate, toDate);
             return Ok(res);
         }
-
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("list-statistic-total-tourbooking-by-date")]
+        public object GetStatisticTotalTourBooking(long fromDate, long toDate)
+        {
+            res = _statistic.GetStatisticTotalTourBooking(fromDate, toDate);
+            return Ok(res);
+        }
         [HttpGet]
         [Authorize]
         [Route("list-statistic-tourbooking-by-year")]
@@ -42,6 +51,14 @@ namespace TravelApi.Controllers.Notify
             return Ok(res);
         }
 
+        [HttpGet]
+        [Authorize]
+        [Route("list-statistic-tourbooking-by-month")]
+        public object GetStatisticTourbookingByMonth(int month , int year)
+        {
+            res = _statistic.GetStatisticTourbookingByMonth(month, year);
+            return Ok(res);
+        }
         [HttpGet]
         [Authorize]
         [Route("list-statistic-tourbooking-by-week")]
@@ -94,5 +111,7 @@ namespace TravelApi.Controllers.Notify
                 });
             }
         }
+
+      
     }
 }

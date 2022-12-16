@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TravelApi.Calendar;
+using static Google.Apis.Calendar.v3.Data.Event;
 
 namespace TravelApi.Helpers
 {
@@ -21,6 +22,12 @@ namespace TravelApi.Helpers
         }
         public static async Task<Event> CreateGoogleCalendar(GoogleCalendar request)
         {
+            var EventAttendee = new List<EventAttendee>()
+                {
+                    new EventAttendee() { Email = "driverhuyhoa@gmail.com" ,Organizer = true,DisplayName="Ku mè",Comment= "Ma vương tới chơi"},
+                                        new EventAttendee() { Email = "hoaphps13016@fpt.edu.vn" ,Organizer = true,DisplayName="Ku mè 2",Comment= "Ma vương tới chơi"},
+
+                };
             string[] Scopes = {"https://www.googleapis.com/auth/calendar"};
             string ApplicationName = "Google Calendar API";
             UserCredential credential;
@@ -44,14 +51,18 @@ namespace TravelApi.Helpers
 
             Event eventCalendar = new Event() {
                 Recurrence = new String[] { "RRULE:FREQ=WEEKLY;BYDAY=MO" },
-                Attendees = new List<EventAttendee>()
-                {
-                    new EventAttendee() { Email = "rotkbynbyn@gmail.com"},
-                    new EventAttendee() { Email = "longnhps14949@fpt.edu.vn"},
-                    new EventAttendee() { Email = "anhntnps14963@fpt.edu.vn"}
-
+                Attendees = EventAttendee,
+                ColorId = "1",
+                Organizer = new OrganizerData 
+                { 
+                    Email = "ng.hglong102@gmail.com",
+                    DisplayName = "Vua" ,
+                    Self = true
                 },
-                GuestsCanSeeOtherGuests = true,
+                Creator = new CreatorData { DisplayName ="Vua",
+                Email = "longnghg100220@gmail.com"
+                },
+                GuestsCanSeeOtherGuests = false,
                 GuestsCanModify = false,
                 Summary = request.Summary,
                 Location = request.Location,
@@ -68,12 +79,14 @@ namespace TravelApi.Helpers
                 Description = request.Description
                 
             };
+            
             var eventRequest = services.Events.Insert(eventCalendar, "primary");
             eventRequest.SendNotifications = true;
+         
             var requestCreate =await eventRequest.ExecuteAsync();
-            var b = 123;
             return requestCreate;
 
         }
     }
 }
+// https://referencesource.microsoft.com/#System.Core/System/Linq/Enumerable.cs,d35db0dea6ae310a

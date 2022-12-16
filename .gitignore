@@ -3,3 +3,6 @@
 **/bin/Release/
 **/obj/
 **/.vs/
+
+Travel.Shared/PrUtility.dll
+TravelApi/wwwroot/

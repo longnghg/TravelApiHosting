@@ -16,6 +16,7 @@ namespace Travel.Shared.ViewModels.Travel.ServiceVM
             public float ComboPrice { get => comboPrice; set => comboPrice = value; }
 
             private float comboPrice;
+    
         }
         public class HotelViewModel : ParentProperty
         {
@@ -53,6 +54,9 @@ namespace Travel.Shared.ViewModels.Travel.ServiceVM
             private string name;
             private int approve;
             private bool isDelete;
+            private Guid provinceId;
+            private Guid districtId;
+            private Guid wardId;
             public string ModifyBy { get => modifyBy; set => modifyBy = value; }
             public long ModifyDate { get => modifyDate; set => modifyDate = value; }
             public string Phone { get => phone; set => phone = value; }
@@ -61,6 +65,9 @@ namespace Travel.Shared.ViewModels.Travel.ServiceVM
             public Guid ContractId { get => contractId; set => contractId = value; }
             public int Approve { get => approve; set => approve = value; }
             public bool IsDelete { get => isDelete; set => isDelete = value; }
+            public Guid ProvinceId { get => provinceId; set => provinceId = value; }
+            public Guid DistrictId { get => districtId; set => districtId = value; }
+            public Guid WardId { get => wardId; set => wardId = value; }
         }
     }
 }

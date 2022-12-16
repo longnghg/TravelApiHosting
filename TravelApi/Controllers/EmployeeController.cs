@@ -29,13 +29,17 @@ namespace TravelApi.Controllers
         private IEmployee employee;
         private Notification message;
         private Response res;
-
+        private readonly ILog _log;
         public EmployeeController(IEmployee _employee)
         {
             employee = _employee;
             res = new Response();
         }
-
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
         [HttpGet]
         //[ClaimRequirement(ClaimTypes.Name, "Admin")]
         [Authorize]
@@ -67,7 +71,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateEmployeeViewModel>(result);
-                res = employee.CreateEmployee(createObj);
+
+                var emailUser = GetEmailUserLogin().Value;              
+                res = employee.CreateEmployee(createObj, emailUser);
             }
             else
             {
@@ -88,7 +94,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateEmployeeViewModel>(result);
-                res = employee.UpdateEmployee(updateObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = employee.UpdateEmployee(updateObj, emailUser);
             }
             else
             {
@@ -101,7 +108,9 @@ namespace TravelApi.Controllers
         [Route("delete-employee")]
         public object DeleteEmployee(Guid idEmployee)
         {
-            res = employee.DeleteEmployee(idEmployee);
+
+            var emailUser = GetEmailUserLogin().Value;
+            res = employee.DeleteEmployee(idEmployee, emailUser);
             return Ok(res);
         }
 
@@ -110,7 +119,8 @@ namespace TravelApi.Controllers
         [Route("restore-employee")]
         public object RestoreEmployee(Guid idEmployee)
         {
-            res = employee.RestoreEmployee(idEmployee);
+            var emailUser = GetEmailUserLogin().Value;
+            res = employee.RestoreEmployee(idEmployee, emailUser);
             return Ok(res);
         }
 
@@ -120,6 +130,7 @@ namespace TravelApi.Controllers
         public object GetEmployee(Guid idEmployee)
         {
             res = employee.GetEmployee(idEmployee);
+
             return Ok(res);
         }
 
@@ -139,6 +150,34 @@ namespace TravelApi.Controllers
         public async Task<object> SendOTP(string email)
         {
             res = await employee.SendOTP(email);
+            return Ok(res);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("send-file")]
+        public async Task<object> SendFile(string email)
+        {
+            res = await employee.SendFile(email);
+            return Ok(res);
+        }
+
+
+        [HttpGet]
+        [Authorize]
+        [Route("list-selectbox-employee")]
+        public object GetsSelectBoxEmployee(long fromDate, long toDate)
+        {
+            res = employee.GetsSelectBoxEmployee(fromDate, toDate);
+            return Ok(res);
+        }
+
+        [HttpGet]
+        [Authorize]
+        [Route("list-selectbox-employee-update")]
+        public object GetsSelectBoxEmployeeUpdate(long fromDate, long toDate, string idSchedule)
+        {
+            res = employee.GetsSelectBoxEmployeeUpdate(fromDate, toDate, idSchedule);
             return Ok(res);
         }
     }

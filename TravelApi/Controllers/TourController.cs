@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Context.Models;
@@ -27,10 +28,15 @@ namespace TravelApi.Controllers
         private Response res;
 
 
-        public TourController(ITour tourRes)
+        public TourController(ITour tourRes, ILog log)
         {
             _tourRes = tourRes;
             res = new Response();
+        }
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
         }
 
         [HttpPost]
@@ -43,7 +49,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateTourViewModel>(result);
-                res = _tourRes.Create(createObj);
+                 var emailUser = GetEmailUserLogin().Value;
+                res = _tourRes.Create(createObj, emailUser);
             }
             else
             {
@@ -61,9 +68,12 @@ namespace TravelApi.Controllers
             var result = _tourRes.CheckBeforSave(frmdata, file, ref message, true);
             if (message == null)
             {
-                var createObj = JsonSerializer.Deserialize<UpdateTourViewModel>(result);
-                res = _tourRes.Update(createObj);
-            }
+                var updateObj = JsonSerializer.Deserialize<UpdateTourViewModel>(result);
+                
+                var emailUser = GetEmailUserLogin().Value;
+                res = _tourRes.Update(updateObj, emailUser);
+        }
+        
             else
             {
                 res.Notification = message;
@@ -124,7 +134,9 @@ namespace TravelApi.Controllers
         [Route("delete-tour")]
         public object DeleteTour(string idTour, Guid idUser)
         {
-            res = _tourRes.Delete(idTour, idUser);
+          
+            var emailUser = GetEmailUserLogin().Value;
+            res = _tourRes.Delete(idTour, idUser, emailUser);
             return Ok(res);
         }
 
@@ -134,7 +146,8 @@ namespace TravelApi.Controllers
         [Route("restore-tour")]
         public object RestoreTour(string idTour,Guid idUser)
         {
-            res = _tourRes.RestoreTour(idTour, idUser);
+            var emailUser = GetEmailUserLogin().Value;
+            res = _tourRes.RestoreTour(idTour, idUser, emailUser);
             return Ok(res);
         }
         [HttpGet]
@@ -177,7 +190,9 @@ namespace TravelApi.Controllers
         [Route("update-rating-tour")]
         public object UpdateRatingTour(int rating, string idTour)
         {
-            res = _tourRes.UpdateRating(rating, idTour);
+            
+            var emailUser = GetEmailUserLogin().Value;
+            res = _tourRes.UpdateRating(rating, idTour, emailUser);
             return Ok(res);
         }
 

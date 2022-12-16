@@ -14,5 +14,8 @@ namespace Travel.Context.Models
         public string FilePath { get; set; }
         public string IdService { get; set; }
         public string Extension { get; set; }
+
+        public bool IsDelete { get; set; }
+        public string TypeAction { get; set; }
     }
 }

@@ -22,9 +22,11 @@ namespace Travel.Data.Repositories
         private readonly TravelContext _db;
         private Notification message;
         private Response res;
-        public VoucherRes(TravelContext db)
+        private readonly ILog _log;
+        public VoucherRes(TravelContext db , ILog log)
         {
             _db = db;
+            _log = log;
             message = new Notification();
             res = new Response();
         }
@@ -90,12 +92,26 @@ namespace Travel.Data.Repositories
            
             try
             {
+                
+                var cus = _db.Customers.Find(idCus);
+                var vou = _db.Vouchers.Find(idVoucher);
                 var voucher = new Customer_Voucher();
-                voucher.VoucherId = idVoucher;
-                voucher.CustomerId = idCus;
-                _db.Customer_Vouchers.Add(voucher);
-                _db.SaveChanges();
-                return Ultility.Responses("Mua thành công !", Enums.TypeCRUD.Success.ToString());
+
+                if (cus.Point > vou.Value)
+                {
+                    var value = cus.Point - vou.Value;
+                    cus.Point = value;
+                    voucher.VoucherId = idVoucher;
+                    voucher.CustomerId = idCus;              
+                    _db.Customer_Vouchers.Add(voucher);
+                    _db.SaveChanges();
+                    return Ultility.Responses("Mua thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Bạn không đủ điểm  !", Enums.TypeCRUD.Success.ToString());
+                }
+                
             }
             catch (Exception e)
             {
@@ -103,18 +119,25 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateVoucher(CreateVoucherViewModel input)
+        public Response CreateVoucher(CreateVoucherViewModel input, string emailUser)
         {
             try
             {
                 Voucher voucher = new Voucher();
                 voucher = Mapper.MapCreateVoucher(input);
+                string jsonContent = JsonSerializer.Serialize(voucher);
+
                 _db.Vouchers.Add(voucher);
                 _db.SaveChanges();
-                res.Notification.DateTime = DateTime.Now;
-                res.Notification.Messenge = "Thêm thành công !";
-                res.Notification.Type = "Success";
-                return res;
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Voucher");
+                if (result)
+                {
+                    return Ultility.Responses($"Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -127,17 +150,26 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response DeleteVoucher(Guid id)
+        public Response DeleteVoucher(Guid id, string emailUser)
         {
             try
             {
                 var voucher = _db.Vouchers.Find(id);
                 if (voucher != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(voucher);
                     _db.Vouchers.Remove(voucher);
                     _db.SaveChanges();
 
-                    return Ultility.Responses("Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                    bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Voucher");
+                    if (result)
+                    {
+                        return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
 
                 }
                 else
@@ -172,19 +204,26 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response RestoreVoucher(Guid id)
+        public Response RestoreVoucher(Guid id, string emailUser)
         {
             try
             {
                 var voucher = _db.Vouchers.Find(id);
                 if (voucher != null)
                 {
-                    
+                    string jsonContent = JsonSerializer.Serialize(voucher);
+
                     _db.SaveChanges();
 
-                    res.Notification.DateTime = DateTime.Now;
-                    res.Notification.Messenge = "Khôi phục thành công !";
-                    res.Notification.Type = "Success";
+                    bool result = _log.AddLog(content: jsonContent, type: "restore", emailCreator: emailUser, classContent: "Voucher");
+                    if (result)
+                    {
+                        return Ultility.Responses($"Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
                 }
                 else
                 {
@@ -204,23 +243,50 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdateVoucher(UpdateVoucherViewModel input)
+        public Response UpdateVoucher(UpdateVoucherViewModel input,string emailUser)
         {
             try
             {
                 var update = (from x in _db.Vouchers where x.IdVoucher == input.IdVoucher select x).FirstOrDefault();
                 Voucher voucher = new Voucher();
+                string jsonContent = JsonSerializer.Serialize(voucher);
+
                 voucher = Mapper.MapUpdateVoucher(input);
                 _db.Vouchers.Update(voucher);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
-
+              
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Voucher");
+                if (result)
+                {
+                    return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
 
+            }
+        }
+
+        public Response GetsVoucherHistory(Guid idCustomer)
+        {
+            try
+            {
+
+                var list = (from x in _db.Customer_Vouchers
+                            join v in _db.Vouchers on x.VoucherId equals v.IdVoucher              
+                            select v).ToList();
+    
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), list);
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
     }

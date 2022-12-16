@@ -89,8 +89,9 @@ namespace Travel.Shared.ViewModels.Travel.ContractVM
         private string name;
         private string nameContract;
         private bool isDelete;
-
-
+        private Guid provinceId;
+        private Guid districtId;
+        private Guid wardId;
 
         public string ModifyBy { get => modifyBy; set => modifyBy = value; }
         public long ModifyDate { get => modifyDate; set => modifyDate = value; }
@@ -99,6 +100,8 @@ namespace Travel.Shared.ViewModels.Travel.ContractVM
         public string Name { get => name; set => name = value; }
         public string NameContract { get => nameContract; set => nameContract = value; }
         public bool IsDelete { get => isDelete; set => isDelete = value; }
-  
+        public Guid ProvinceId { get => provinceId; set => provinceId = value; }
+        public Guid DistrictId { get => districtId; set => districtId = value; }
+        public Guid WardId { get => wardId; set => wardId = value; }
     }
 }

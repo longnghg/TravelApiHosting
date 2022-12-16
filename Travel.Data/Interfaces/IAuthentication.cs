@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Travel.Context.Models;
+using Travel.Context.Models.Travel;
 using Travel.Shared.ViewModels;
 
 namespace Travel.Data.Interfaces
@@ -22,7 +23,7 @@ namespace Travel.Data.Interfaces
         Response CusDeleteToken(Guid idCus);
         bool CreateAccountGoogle(Customer cus);
         bool CusAddToken(string token, Guid idCus);
-        bool CusAddTokenGoogle(string token, Guid idCus);
+        Task<bool> CusAddTokenGoogle(string token, Guid idCus);
 
         Response CusChangePassword(Guid idCus, string password, string newPassword);
         Response CusForgotPassword(string email, string password);
@@ -39,5 +40,13 @@ namespace Travel.Data.Interfaces
 
         Response EmpChangePassword(Guid idEmp, string password, string newPassword);
         Response EmpForgotPassword(string email, string password);
+
+
+
+        // long
+        Task<RefreshToken> GetRefreshToken(string refreshToken); 
+        Task<bool> UpdateToken(RefreshToken refToken );
+        Task<bool> AddRefeshToken(RefreshToken refToken);
+        Task<Customer> GetCustomerById(Guid id);
     }
 }

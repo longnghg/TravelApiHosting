@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Travel.Shared.ViewModels.Travel.ContractVM;
 
 namespace Travel.Shared.ViewModels.Travel.CostTourVM
 {
@@ -10,9 +11,10 @@ namespace Travel.Shared.ViewModels.Travel.CostTourVM
     {
 
     }
-    public class CreateCostViewModel
+    public class CreateCostViewModel : UpdateApproveData
     {
         private string idSchedule;
+        private string idScheduleTmp;
         private float breakfast;
         private float water;
         private float feeGas;
@@ -30,6 +32,7 @@ namespace Travel.Shared.ViewModels.Travel.CostTourVM
         private Guid placeId;
         private DateTime departureDate;
         private DateTime returnDate;
+
         public string IdSchedule { get => idSchedule; set => idSchedule = value; }
         public float Breakfast { get => breakfast; set => breakfast = value; }
         public float Water { get => water; set => water = value; }
@@ -48,5 +51,6 @@ namespace Travel.Shared.ViewModels.Travel.CostTourVM
         public float TotalCostTourNotService { get => totalCostTourNotService; set => totalCostTourNotService = value; }
         public DateTime DepartureDate { get => departureDate; set => departureDate = value; }
         public DateTime ReturnDate { get => returnDate; set => returnDate = value; }
+        public string IdScheduleTmp { get => idScheduleTmp; set => idScheduleTmp = value; }
     }
 }

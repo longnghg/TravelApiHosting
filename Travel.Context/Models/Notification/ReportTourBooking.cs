@@ -14,6 +14,7 @@ namespace Travel.Context.Models.Notification
         public long DateSave { get; set; }
         public long QuantityBooked { get; set; }
         public long TotalRevenue { get; set; }
+        public long  QuantityCancel { get; set; }
         public long TotalCost { get; set; }
 
     }

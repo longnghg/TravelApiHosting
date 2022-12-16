@@ -14,7 +14,7 @@ namespace Travel.Data.Interfaces
         string CheckBeforSave(JObject frmData, ref Notification _message, bool isUpdate);
         Response GetsReview();
   
-        Response CreateReview(CreateReviewModel input);
+        Response CreateReview(CreateReviewModel input, string emailUser);
 
     }
 }

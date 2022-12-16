@@ -6,6 +6,7 @@ using PrUtility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -34,12 +35,20 @@ namespace TravelApi.Controllers
             _schedule = schedule;
             res = new Response();
         }
+
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
+
         [HttpGet]
         [Authorize]
         [Route("do-payment")]
-        public object DoPayment(string idTourBooking)
+        public async Task<object> DoPayment(string idTourBooking)
         {
-            res = _tourbooking.DoPayment(idTourBooking);
+            res =  await _tourbooking.DoPayment(idTourBooking);
             return Ok(res);
         }
         [HttpGet]
@@ -77,7 +86,9 @@ namespace TravelApi.Controllers
                 if(checkEmpty == null)
                 {
                     //await _schedule.UpdateCapacity(createObj.ScheduleId, adult, child, baby);
-                    res = await _tourbooking.Create(createObj);
+                
+                    var emailUser = GetEmailUserLogin().Value;
+                    res = await _tourbooking.Create(createObj, emailUser);
                 }
                 else
                 {
@@ -98,6 +109,15 @@ namespace TravelApi.Controllers
             res = await _tourbooking.TourBookingById(idTourBooking);
             return Ok(res);
         }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("payment-changed")]
+        public async Task<object> ChangePayment(string idTourBooking,int idPayment)
+        {
+            var result =  await _tourbooking.ChangePayment(idTourBooking, idPayment);
+            return Ok(result);
+        }
+        
 
         [HttpGet]
         [AllowAnonymous]
@@ -123,7 +143,9 @@ namespace TravelApi.Controllers
         [Route("restore-booking")]
         public async Task<object> RestoreBooking(string idTourBooking)
         {
-            res = await _tourbooking.RestoreBooking(idTourBooking);
+            var emailUser = GetEmailUserLogin().Value;
+            res = await _tourbooking.RestoreBooking(idTourBooking, emailUser);
+            
             return Ok(res);
         }
         [HttpGet]
@@ -156,7 +178,20 @@ namespace TravelApi.Controllers
         [Route("update-tourBooking-status")]
         public object UpdateStatus(string pincode)
         {
-            res = _tourbooking.UpdateStatus(pincode);
+           
+            var emailUser = GetEmailUserLogin().Value;
+            res = _tourbooking.UpdateStatus(pincode, emailUser);
+            return Ok(res);
+        }
+
+        [HttpPut]
+        [Authorize]
+        [Route("adm-update-tourBooking-status")]
+        public object UpdateStatus(string idTourBooking, int status)
+        {
+
+            var emailUser = GetEmailUserLogin().Value;
+            res = _tourbooking.UpdateStatus(idTourBooking, status, emailUser);
             return Ok(res);
         }
 
@@ -184,6 +219,34 @@ namespace TravelApi.Controllers
                     Message = "Thất bại"
                 });
             }
+        }
+
+
+
+        [HttpPut]
+        [AllowAnonymous]
+        [Route("check-in-booking")]
+        public object CheckinBooking(string bookingNo)
+        {
+            res = _tourbooking.CheckInBooking(bookingNo);
+            return Ok(res);
+        }
+        [HttpGet]
+        [Authorize]
+        [Route("list-statistic-paid-not-checkedin")]
+        public object StatisticPaidNotCheckedin()
+        {
+            res = _tourbooking.StatisticPaidNotCheckedin();
+            return Ok(res);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("cus-search-bookingNo")]
+        public object CusSearchBookingNo(string bookingNo)
+        {
+            res = _tourbooking.CusSearchBookingNo(bookingNo);
+            return Ok(res);
         }
     }
 }

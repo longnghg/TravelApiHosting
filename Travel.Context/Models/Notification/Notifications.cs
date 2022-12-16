@@ -14,7 +14,8 @@ namespace Travel.Context.Models.Notification
         public int Type { get; set; }
         public long Time { get; set; }
         public bool IsSeen { get; set; }
-        public Guid EmployeeId { get; set; }
+        public Guid RequestId { get; set; }
+        public Guid ReponseId { get; set; }
         public string RoleId { get; set; }
     }
 }

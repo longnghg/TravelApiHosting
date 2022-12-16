@@ -13,15 +13,16 @@ namespace Travel.Data.Interfaces
     {
         string CheckBeforeSave(JObject frmData, ref Notification _message, bool isUpdate);
         Response Gets(bool isDelete);
-        Response UpdateCar(UpdateCarViewModel input);
-        Response Create(CreateCarViewModel input);
+        Response UpdateCar(UpdateCarViewModel input , string emailUser);
+        Response Create(CreateCarViewModel input, string emailUser);
         Response StatisticCar();
         Response GetsSelectBoxCar(long fromDate, long toDate);
         Response ViewSelectBoxCar(string idSchedule);
-        Response DeleteCar(Guid id, Guid idUser);
+        Response DeleteCar(Guid id, Guid idUser , string emailUser);
         Response GetsSelectBoxCarUpdate(long fromDate, long toDate, string idSchedule);
 
-        Response RestoreCar(Guid id);
+        Response RestoreCar(Guid id , string emailUser);
         Response SearchCar(JObject frmData);
+        Response GetListCarHaveSchedule(Guid idCar, int pageIndex, int pageSize);
     }
 }

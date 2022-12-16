@@ -14,9 +14,9 @@ namespace Travel.Data.Interfaces
     public interface ITimeLine
     {
         string CheckBeforSave(JObject frmData, ref Notification _message, bool isUpdate = false);
-        Response Create(ICollection<CreateTimeLineViewModel> input);
-        Response Update(ICollection<UpdateTimeLineViewModel> input);
-        Response Delete(ICollection<Timeline> timelines);
+        Response Create(ICollection<CreateTimeLineViewModel> input, string emailUser);
+        Response Update(ICollection<UpdateTimeLineViewModel> input, string emailUser);
+        Response Delete(ICollection<Timeline> timelines , string emailUser);
         Response Get();
         Response GetTimelineByIdSchedule(string IdSchedule);
     }

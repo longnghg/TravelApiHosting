@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -24,6 +25,18 @@ namespace Travel.Data.Responsives
             _db = db;
             res = new Response();
             _config = config;
+        }
+        private void AddDatabase<T>(T input)
+        {
+            _db.Entry(input).State = EntityState.Added;
+        }
+        private void UpdateDatabase<T>(T input)
+        {
+            _db.Entry(input).State = EntityState.Modified;
+        }
+        private async Task<bool> SaveChangeAsync()
+        {
+           return await _db.SaveChangesAsync() > 0;
         }
         public Employee EmpLogin(string email)
         {
@@ -73,6 +86,7 @@ namespace Travel.Data.Responsives
             try
             {
                 _db.Employees.Find(idEmp).AccessToken = token;
+                _db.Employees.Find(idEmp).IsOnline = true;
                 _db.SaveChanges();
                 return true;
             }
@@ -245,6 +259,7 @@ namespace Travel.Data.Responsives
                                  x.IdEmployee == idEmp
                            select x).FirstOrDefault();
                 emp.AccessToken = null;
+                emp.IsOnline = false;
                 _db.SaveChanges();
                 res.Notification.DateTime = DateTime.Now;
                 res.Notification.Messenge = "Đăng xuất thành công !";
@@ -298,13 +313,13 @@ namespace Travel.Data.Responsives
             }
         }
 
-        public bool CusAddTokenGoogle(string token, Guid idCus)
+        public async Task<bool> CusAddTokenGoogle(string token, Guid idCus)
         {
             try
             {
-                _db.Customers.Find(idCus).GoogleToken = token;
-                _db.SaveChanges();
-                return true;
+                var customer = await _db.Customers.FindAsync(idCus);
+                customer.GoogleToken = token;
+                return await _db.SaveChangesAsync() > 0;
             }
             catch (Exception)
             {
@@ -568,6 +583,67 @@ namespace Travel.Data.Responsives
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
+        }
+
+        public async Task<RefreshToken> GetRefreshToken(string refreshToken)
+        {
+            try
+            {
+                var storedToken = await (from x in _db.RefreshTokens.AsNoTracking()
+                                   where x.RefToken == refreshToken
+                                   select x).FirstOrDefaultAsync();
+                return storedToken;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        public async Task<bool> UpdateToken(RefreshToken refToken)
+        {
+            try
+            {
+                if (refToken != null)
+                {
+                    UpdateDatabase(refToken);
+                    if (await SaveChangeAsync())
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> AddRefeshToken(RefreshToken refToken)
+        {
+            try
+            {
+                AddDatabase(refToken);
+                if (await SaveChangeAsync())
+                {
+                    return true;
+                }
+                return false;
+
+            }
+            catch 
+            {
+                return false;
+            }
+        }
+
+        public  async Task<Customer> GetCustomerById(Guid id)
+        {
+            var customer =await (from x in _db.Customers.AsNoTracking()
+                            where x.IdCustomer == id
+                            select x).FirstOrDefaultAsync();
+            return customer;
         }
     }
 }

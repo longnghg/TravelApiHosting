@@ -17,5 +17,11 @@ namespace Travel.Data.Interfaces
         Response GetBanner();
         Response GetBannerAll();
         Response DeleteBanner(Guid idBanner);
+        Task<Response> GetApiWeather(string location);
+        Task<string> Translate(string input, string fromLang, string toLang);
+        Task<Datum> GetGoogleMapLocation(string address);
+
+        Response SearchBanner(JObject frmData);
+
     }
 }

@@ -51,9 +51,6 @@ namespace Travel.Shared.ViewModels.Travel
         private float vat;
         private int profit;
         private int status;
-
-
-
         private string tourId;
         private Guid carId;
         private Guid employeeId;
@@ -66,7 +63,7 @@ namespace Travel.Shared.ViewModels.Travel
         public long TimePromotion { get => timePromotion; set => timePromotion = value; }
         public float QuantityChild { get => quantityChild; set => quantityChild = value; }
         public int Status { get => status; set => status = value; }
-     
+        public string Alias { get => alias; set => alias = value; }
         public int MinCapacity { get => minCapacity; set => minCapacity = value; }
         public int MaxCapacity { get => maxCapacity; set => maxCapacity = value; }
         public string TourId { get => tourId; set => tourId = value; }
@@ -75,7 +72,6 @@ namespace Travel.Shared.ViewModels.Travel
         public int PromotionId { get => promotionId; set => promotionId = value; }
         public long ReturnDate { get => returnDate; set => returnDate = value; }
         public string Description { get => description; set => description = value; }
-        public string Alias { get => alias; set => alias = value; }
         public float Vat { get => vat; set => vat = value; }
         public string DeparturePlace { get => departurePlace; set => departurePlace = value; }
         public int Profit { get => profit; set => profit = value; }

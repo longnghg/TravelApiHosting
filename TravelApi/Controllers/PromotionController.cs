@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
+using Travel.Data.Repositories;
 using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel;
 using Travel.Shared.ViewModels.Travel.PromotionVM;
@@ -22,13 +24,17 @@ namespace TravelApi.Controllers
         private readonly IPromotions _promotion;
         private Notification message;
         private Response res;
-
+        private readonly ILog _log;
         public PromotionController(IPromotions promotion)
         {
             _promotion = promotion;
             res = new Response();
         }
-
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
         [HttpGet]
         [Authorize]
         [Route("list-promotion")]
@@ -59,9 +65,9 @@ namespace TravelApi.Controllers
         [HttpGet]
         [Authorize]
         [Route("list-promotion-waiting")]
-        public object GetsWaitingPromotion(Guid idUser)
+        public object GetsWaitingPromotion(Guid idUser, int pageIndex, int pageSize)
         {
-            res = _promotion.GetsWaitingPromotion(idUser);
+            res = _promotion.GetsWaitingPromotion(idUser,pageIndex, pageSize);
             return Ok(res);
         }
 
@@ -75,7 +81,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreatePromotionViewModel>(result);
-                res = _promotion.CreatePromotion(createObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _promotion.CreatePromotion(createObj, emailUser);
             }
             else
             {
@@ -95,7 +102,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdatePromotionViewModel>(result);
-                res = _promotion.UpdatePromotion(updateObj);
+             
+                var emailUser = GetEmailUserLogin().Value;
+                res = res = _promotion.UpdatePromotion(updateObj, emailUser);
             }
             else
             {
@@ -126,7 +135,8 @@ namespace TravelApi.Controllers
         [Route("delete-promotion")]
         public object DeletePromotion(int idPromotion, Guid idUser)
         {
-            res = _promotion.DeletePromotion(idPromotion, idUser);
+            var emailUser = GetEmailUserLogin().Value;
+            res = _promotion.DeletePromotion(idPromotion, idUser, emailUser);
             return Ok(res);
         }
         [HttpPut]
@@ -134,7 +144,18 @@ namespace TravelApi.Controllers
         [Route("restore-promotion")]
         public object RestoreHotel(int idPromotion, Guid idUser)
         {
-            res = _promotion.RestorePromotion(idPromotion, idUser);
+          
+            var emailUser = GetEmailUserLogin().Value;
+            res = _promotion.RestorePromotion(idPromotion, idUser, emailUser);
+            return Ok(res);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [Route("search-promotion")]
+        public object SearchPromotion([FromBody] JObject frmData)
+        {
+            res = _promotion.SearchPromotion(frmData);
             return Ok(res);
         }
 

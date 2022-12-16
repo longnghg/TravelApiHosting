@@ -9,6 +9,7 @@ namespace Travel.Shared.ViewModels.Travel
 {
     public class TimeLineViewModel
     {
+        private string title;
         private string idTimeLine;
         private string description;
         private long fromTime;
@@ -20,6 +21,7 @@ namespace Travel.Shared.ViewModels.Travel
       
 
         public string IdTimeLine { get => idTimeLine; set => idTimeLine = value; }
+        public string Title { get => title; set => title = value; }
         public string Description { get => description; set => description = value; }
         public long FromTime { get => fromTime; set => fromTime = value; }
         public long ToTime { get => toTime; set => toTime = value; }

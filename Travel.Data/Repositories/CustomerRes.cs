@@ -24,12 +24,14 @@ namespace Travel.Data.Repositories
         private Notification message;
         private readonly IConfiguration _config;
         private Response res;
-        public CustomerRes(TravelContext db, IConfiguration config)
+        private readonly ILog _log;
+        public CustomerRes(TravelContext db, IConfiguration config , ILog log)
         {
             _db = db;
             message = new Notification();
             _config = config;
             res = new Response();
+            _log = log;
         }
         private void UpdateDatabase<T>(T input)
         {
@@ -98,16 +100,10 @@ namespace Travel.Data.Repositories
                 if (frmData != null)
                 {
                     var idCustomer = PrCommon.GetString("idCustomer", frmData);
-                    if (String.IsNullOrEmpty(idCustomer))
-                    {
-                        //idCustomer = Guid.NewGuid().ToString();
-                    }
-
                     var nameCustomer = PrCommon.GetString("nameCustomer", frmData);
                     if (String.IsNullOrEmpty(nameCustomer))
                     {
                     }
-
                     var email = PrCommon.GetString("email", frmData);
                     if (!String.IsNullOrEmpty(email) && isUpdate == false)
                     {
@@ -121,13 +117,20 @@ namespace Travel.Data.Repositories
 
 
                     var phone = PrCommon.GetString("phone", frmData);
-                    if (String.IsNullOrEmpty(phone))
+                    if (!String.IsNullOrEmpty(phone))
                     {
+                        
+                        var check = CheckPhoneCustomer(phone, idCustomer != null ? idCustomer : null);
+                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                        {
+                            _message = check.Notification;
+                            return string.Empty;
+                        }
                     }
                     var birthday = PrCommon.GetString("birthday", frmData);
                     if (String.IsNullOrEmpty(birthday))
                     {
-                      
+                        
                     }
 
 
@@ -192,9 +195,11 @@ namespace Travel.Data.Repositories
                 customer.IdCustomer = Guid.NewGuid();
                 customer.Point = 0;
                 customer.IsDelete = false;
+                string jsonContent = JsonSerializer.Serialize(customer);
                 CreateDatabase(customer);
-
+               
                 return Ultility.Responses("Đăng ký thành công !", Enums.TypeCRUD.Success.ToString());
+
             }
             catch (Exception e)
             {
@@ -207,17 +212,20 @@ namespace Travel.Data.Repositories
         {
             try
             {                       
-                var listCus = (from x in _db.Customers.AsNoTracking()
-                               where x.IsDelete == false select x).ToList();
+                var queryListCus = (from x in _db.Customers.AsNoTracking()
+                               where x.IsDelete == false 
+                               select x);
+
+
+                int totalResult = queryListCus.Count();
+                var listCus = queryListCus.ToList();
                 var result = Mapper.MapCustomer(listCus);
-                if (result.Count() > 0)
-                {
-                    return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
-                }
-                else
-                {
-                    return Ultility.Responses("", Enums.TypeCRUD.Warning.ToString(), null);
-                }
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
+
+
+            
             }
             catch (Exception e)
             {
@@ -241,6 +249,7 @@ namespace Travel.Data.Repositories
                                 DateBooking = x.DateBooking,
                                 BookingNo = x.BookingNo,
                                 ValuePromotion = x.ValuePromotion,
+                                IsSendFeedBack = x.IsSendFeedBack,
                                 TourBookingDetails = (from tbd in _db.tourBookingDetails.AsNoTracking()
                                                       where tbd.IdTourBookingDetails == x.IdTourBooking 
                                                       select tbd).First(),
@@ -326,9 +335,9 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                var account = (from x in _db.Customers.AsNoTracking()
+                var account = await (from x in _db.Customers.AsNoTracking()
                                where x.Email.ToLower() == email.ToLower()
-                               select x).FirstOrDefault();
+                               select x).FirstOrDefaultAsync();
                 if (account != null)
                 {
                     string otpCode = Ultility.RandomString(8, false);
@@ -339,15 +348,22 @@ namespace Travel.Data.Repositories
                     obj.BeginTime = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(begin);
                     obj.EndTime = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(end);
                     obj.OTPCode = otpCode;
-                    await _db.OTPs.AddAsync(obj);
-                    await _db.SaveChangesAsync();
 
                     var subjectOTP = _config["OTPSubject"];
                     var emailSend = _config["emailSend"];
                     var keySecurity = _config["keySecurity"]; 
                      var stringHtml = Ultility.getHtml(otpCode, subjectOTP, "OTP");
 
+
+
                     Ultility.sendEmail(stringHtml, email, "Yêu cầu quên mật khẩu", emailSend,keySecurity);
+
+
+
+
+
+
+
                     return Ultility.Responses($"Mã OTP đã gửi vào email {email}!", Enums.TypeCRUD.Success.ToString(), obj);
 
                 }
@@ -361,9 +377,6 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-
-
-
         public Response GetCustomer(Guid idCustomer)
         {
             try
@@ -372,7 +385,6 @@ namespace Travel.Data.Repositories
                                 where x.IdCustomer == idCustomer
                                 select x).First();
                 var result = Mapper.MapCustomer(customer);
-
                 if (result != null)
                 {
                     return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
@@ -395,13 +407,16 @@ namespace Travel.Data.Repositories
                 var customer = await (from x in _db.Customers.AsNoTracking()
                                       where x.IdCustomer == input.IdCustomer
                                       select x).FirstOrDefaultAsync();
+
                 customer.NameCustomer = input.NameCustomer;
                 customer.Phone = input.Phone;
                 customer.Email = input.Email;
                 customer.Address = input.Address;
                 customer.Gender = input.Gender;
                 customer.Birthday = input.Birthday;
+                string jsonContent = JsonSerializer.Serialize(customer);
                 UpdateDatabase(customer);
+
                 return Ultility.Responses("Cập nhật thành công !", Enums.TypeCRUD.Success.ToString());
             }
             catch (Exception e)
@@ -410,28 +425,9 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CheckEmailCustomer(string email)
-        {
-            try
-            {
-                var cus = (from x in _db.Customers where x.IsDelete == false && x.Email == email select x).Count();
-                if (cus > 0)
-                {
-                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "Email");
-                }
-                else
-                {
-                    return Ultility.Responses("", Enums.TypeCRUD.Error.ToString());
-                }
-            }
-            catch (Exception e)
-            {
-                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
 
-            }
-        }
 
-        public async Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point)
+        public async Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point )
         {
             try
             {
@@ -460,6 +456,218 @@ namespace Travel.Data.Repositories
 
             }
         }
+
+        public async Task<Response> UpdateBlockCustomer(Guid idCustomer, bool isBlock)
+        {
+            try
+            {
+                var customer = await (from x in _db.Customers.AsNoTracking()
+                                      where x.IdCustomer == idCustomer
+                                      select x).FirstOrDefaultAsync();
+                if (customer != null)
+                {
+                    if (isBlock)
+                    {
+                        customer.IsBlock = false;
+                    }
+                    else
+                    {
+                        customer.IsBlock = true;
+                    }
+
+
+                    UpdateDatabase(customer);
+                    await SaveChangeAsync();
+                }
+                return Ultility.Responses("Thay đổi trạng thái thành công !", Enums.TypeCRUD.Success.ToString());
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+
+            }
+        }
+
+        public Response Search(JObject frmData)
+        {
+            try
+            {
+                var totalResult = 0;
+                Keywords keywords = new Keywords();
+                var pageSize = PrCommon.GetString("pageSize", frmData) == null ? 10 : Convert.ToInt16(PrCommon.GetString("pageSize", frmData));
+                var pageIndex = PrCommon.GetString("pageIndex", frmData) == null ? 1 : Convert.ToInt16(PrCommon.GetString("pageIndex", frmData));
+
+                var isBlock = PrCommon.GetString("isDelete", frmData);
+                if (!String.IsNullOrEmpty(isBlock))
+                {
+                    keywords.IsBlock = Boolean.Parse(isBlock);
+                }
+
+                var kwNameCustomer = PrCommon.GetString("nameCustomer", frmData);
+                if (!String.IsNullOrEmpty(kwNameCustomer))
+                {
+                    keywords.KwName = kwNameCustomer;
+                }
+                else
+                {
+                    keywords.KwName = "";
+                }
+
+                var kwEmail = PrCommon.GetString("email", frmData);
+                if (!String.IsNullOrEmpty(kwEmail))
+                {
+                    keywords.KwEmail = kwEmail;
+                }
+                else
+                {
+                    keywords.KwEmail = "";
+                }
+
+                var kwPhone = PrCommon.GetString("phone", frmData);
+                if (!String.IsNullOrEmpty(kwPhone))
+                {
+                    keywords.KwPhone = kwPhone;
+                }
+                else
+                {
+                    keywords.KwPhone = "";
+                }
+
+                var kwAddress = PrCommon.GetString("address", frmData);
+                if (!String.IsNullOrEmpty(kwAddress))
+                {
+                    keywords.KwAddress = kwAddress;
+                }
+                else
+                {
+                    keywords.KwAddress = "";
+                }
+
+                var kwPoint = PrCommon.GetString("point", frmData);
+                if (!String.IsNullOrEmpty(kwPoint))
+                {
+                    keywords.KwPoint = int.Parse(kwPoint);
+                }
+                else
+                {
+                    keywords.KwPoint = 0;
+                }
+
+                var listCustomer = new List<Customer>();
+
+                if(keywords.KwPoint > 0)
+                {
+                    var querylistCustomer = (from c in _db.Customers
+                                             where c.IsBlock == keywords.IsBlock &&
+                                                   c.NameCustomer.ToLower().Contains(keywords.KwName) &&
+                                                   c.Phone.ToLower().Contains(keywords.KwPhone) &&
+                                                   c.Email.ToLower().Contains(keywords.KwEmail) &&
+                                                   c.Address.ToLower().Contains(keywords.KwAddress) &&
+                                                   c.Point == keywords.KwPoint
+                                             select c).ToList();
+                    totalResult = querylistCustomer.Count();
+                    listCustomer = querylistCustomer.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                }
+                else
+                {
+                    var querylistCustomer = (from c in _db.Customers
+                                             where c.IsBlock == keywords.IsBlock &&
+                                                   c.NameCustomer.ToLower().Contains(keywords.KwName) &&
+                                                   c.Phone.ToLower().Contains(keywords.KwPhone) &&
+                                                   c.Email.ToLower().Contains(keywords.KwEmail) &&
+                                                   c.Address.ToLower().Contains(keywords.KwAddress)
+                                             select c).ToList();
+                    totalResult = querylistCustomer.Count();
+                    listCustomer = querylistCustomer.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                }
+
+
+                var result = Mapper.MapCustomer(listCustomer);
+                if (result.Count() > 0)
+                {
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    res.TotalResult = totalResult;
+                    return res;
+                }
+                else
+                {
+                    return Ultility.Responses($"Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString());
+                }
+            }
+            catch(Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+
+
+
+
+
+
+
+        #region check same
+
+        public Response CheckEmailCustomer(string email)
+        {
+            try
+            {
+                var cus = (from x in _db.Customers where x.Email == email select x).Count();
+                if (cus > 0)
+                {
+                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "Email");
+                }
+                else
+                {
+                    return Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
+                }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+
+            }
+        }
+
+        public Response CheckPhoneCustomer(string phone, string idCustomer = null)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(idCustomer)) // update
+                {
+                    Guid id = Guid.Parse(idCustomer);
+                    string oldPhone = (from x in _db.Customers.AsNoTracking()
+                                       where x.IdCustomer == id
+                                       select x).First().Phone;
+                    if (phone != oldPhone) // có thay đổi  sdt
+                    {
+                        var obj = (from x in _db.Customers where x.Phone != oldPhone && x.Phone == phone select x).Count();
+                        if (obj > 0)
+                        {
+                            return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                        }
+                    }
+                }
+                else // create
+                {
+                    var emp = (from x in _db.Customers where x.Phone == phone select x).Count();
+                    if (emp > 0)
+                    {
+                        return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                    }
+                }
+                return res;
+
+            }
+            catch (Exception e)
+            {
+
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+
+            }
+        }
+        #endregion
     }
 
 

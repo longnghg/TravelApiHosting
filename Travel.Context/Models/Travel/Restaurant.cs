@@ -22,7 +22,9 @@ namespace Travel.Context.Models
         public string ModifyBy { get; set; }
         public long ModifyDate { get; set; }
         public bool IsDelete { get; set; }
-
+        public Guid ProvinceId { get; set; }
+        public Guid DistrictId { get; set; }
+        public Guid WardId { get; set; }
         public virtual ICollection<CostTour> CostTours { get; set; }
         public virtual ICollection<TourBookingDetails> TourBookingDetails { get; set; }
 

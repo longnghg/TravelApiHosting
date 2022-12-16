@@ -14,5 +14,7 @@ namespace Travel.Context.Models.Notification
         public Guid IdCustomer { get; set; }
         public string NameCustomer { get; set; }
         public string IdTour { get; set; }
+
+        public Guid ReviewId { get; set; }
     }
 }

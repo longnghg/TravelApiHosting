@@ -14,10 +14,12 @@ namespace Travel.Data.Interfaces
         string CheckBeforSave(JObject frmData, ref Notification _message, bool isUpdate);
         Response GetsVoucher(bool isDelete);
        // Response SearchRole(JObject frmData);
-        Response CreateVoucher(CreateVoucherViewModel input);
-        Response UpdateVoucher(UpdateVoucherViewModel input);
-        Response DeleteVoucher(Guid id);
-        Response RestoreVoucher(Guid id);
+        Response CreateVoucher(CreateVoucherViewModel input, string emailUser);
+        Response UpdateVoucher(UpdateVoucherViewModel input, string emailUser);
+        Response DeleteVoucher(Guid id, string emailUser);
+        Response RestoreVoucher(Guid id, string emailUser);
         Response CreateTiket(Guid idVoucher, Guid idCus);
+
+        Response GetsVoucherHistory(Guid idCustomer);
     }
 }

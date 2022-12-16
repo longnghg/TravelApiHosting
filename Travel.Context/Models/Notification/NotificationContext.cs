@@ -22,7 +22,7 @@ namespace Travel.Context.Models.Notification
         public DbSet<ReportTourBooking> ReportTourBooking { get; set; }
         public DbSet<ReportWeek> ReportWeek { get; set; }
         public DbSet<Notifications> Notifications { get; set; }
-
+        public DbSet<Messenger> Messengers { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
@@ -50,6 +50,12 @@ namespace Travel.Context.Models.Notification
                 entity.HasKey(e => e.IdNotification);
                 entity.Property(e => e.Title).HasMaxLength(50);
                 entity.Property(e => e.Content).HasMaxLength(500);
+            });
+            modelBuilder.Entity<Messenger>(entity =>
+            {
+                entity.HasKey(e => e.IdMessenger);
+                entity.Property(e => e.Content).HasMaxLength(1000);
+                entity.Property(e => e.SenderName).HasMaxLength(50);
             });
         }
 

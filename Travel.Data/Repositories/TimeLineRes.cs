@@ -22,22 +22,35 @@ namespace Travel.Data.Repositories
         private readonly TravelContext _db;
         private Notification message;
         private Response res;
+        private readonly ILog _log;
 
-        public TimeLineRes(TravelContext db)
+
+        public TimeLineRes(TravelContext db, ILog log)
         {
             _db = db;
+            _log = log;
             message = new Notification();
             res = new Response();
         }
 
-        public Response Create(ICollection<CreateTimeLineViewModel> input)
+        public Response Create(ICollection<CreateTimeLineViewModel> input, string emailUser)
         {
             try
              {
                 ICollection<Timeline> timeline = Mapper.MapCreateTimeline(input);
+                string jsonContent = JsonSerializer.Serialize(timeline);
                 _db.Timelines.AddRange(timeline.AsEnumerable());
+
                 _db.SaveChanges();
-                return Ultility.Responses("Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Timeline");
+                if (result)
+                {
+                    return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -45,15 +58,42 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response Update(ICollection<UpdateTimeLineViewModel> input)
+        public Response Update(ICollection<UpdateTimeLineViewModel> input, string emailUser)
         {
             try
             {
+                var ads = input.ToList()[0].IdSchedule;
+                var timelines = (from x in _db.Timelines.AsNoTracking()
+                                where x.IdSchedule == input.ToList()[0].IdSchedule
+                                select x).ToList();
+
+                var timelineOld = new List<Timeline>();
+                foreach (var item in timelines)
+                {
+                    timelineOld.Add(Ultility.DeepCopy<Timeline>(item));
+                }
+
+                foreach (var item in timelineOld)
+                {
+                    item.IdTimeline = Guid.NewGuid();
+                    item.IdSchedule = input.ToList()[0].IdScheduleTmp;
+                }
+
+                _db.Timelines.AddRange(timelineOld.AsEnumerable());
                 ICollection<Timeline> timeline = Mapper.MapUpdateTimeline(input);
- 
+              
+                string jsonContent = JsonSerializer.Serialize(timeline);
                 _db.Timelines.UpdateRange(timeline.AsEnumerable());
                 _db.SaveChanges();
-                return Ultility.Responses("Chỉnh sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Timeline");
+                if (result)
+                {
+                    return Ultility.Responses("Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch(Exception e)
             {
@@ -61,13 +101,23 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response Delete(ICollection<Timeline> timelines)
+        public Response Delete(ICollection<Timeline> timelines, string emailUser)
         {
             try
             {
+                Timeline timeline = new Timeline();
+                string jsonContent = JsonSerializer.Serialize(timeline);
                 _db.Timelines.RemoveRange(timelines.AsEnumerable());
                 _db.SaveChanges();
-                return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Timeline");
+                if (result)
+                {
+                    return Ultility.Responses($"xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {

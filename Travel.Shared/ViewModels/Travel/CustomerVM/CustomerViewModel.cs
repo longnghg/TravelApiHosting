@@ -17,7 +17,7 @@ namespace Travel.Shared.ViewModels.Travel.CustomerVM
         private long birthday;
         private long createDate;
         private int point;
-
+        private bool isBlock;
 
         public Guid IdCustomer { get => idCustomer; set => idCustomer = value; }
         public string NameCustomer { get => nameCustomer; set => nameCustomer = value; }
@@ -28,5 +28,6 @@ namespace Travel.Shared.ViewModels.Travel.CustomerVM
         public long CreateDate { get => createDate; set => createDate = value; }
         public int Point { get => point; set => point = value; }
         public bool Gender { get => gender; set => gender = value; }
+        public bool IsBlock { get => isBlock; set => isBlock = value; }
     }
 }

@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -20,12 +21,21 @@ namespace TravelApi.Controllers
         private Notification message;
         private Response res;
 
-        public ReviewController(IReview review)
+        public ReviewController(IReview review, ILog log)
         {
             _review = review;
             res = new Response();
         }
-        [HttpGet]
+    
+
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
+
+         [HttpGet]
         [AllowAnonymous]
         [Route("list-review")]
         public object GetReview()
@@ -44,7 +54,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateReviewModel>(result);
-                res = _review.CreateReview(createObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _review.CreateReview(createObj, emailUser);            
             }
             else
             {

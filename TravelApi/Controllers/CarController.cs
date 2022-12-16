@@ -3,13 +3,19 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
 using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel;
+using TravelApi.Helpers;
 using TravelApi.Hubs;
 
 namespace TravelApi.Controllers
@@ -21,17 +27,27 @@ namespace TravelApi.Controllers
         private ICars _car;
         private Notification message;
         private Response res;
-        public CarController(ICars car)
+        public CarController(ICars car, ILog log)
         {
             _car = car;
             res = new Response();
+
         }
+
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
+
 
         [HttpGet]
         [Authorize]
         [Route("list-car")]
         public object Gets(bool isDelete)
         {
+
             res = _car.Gets(isDelete);
             return Ok(res);
         }
@@ -46,9 +62,9 @@ namespace TravelApi.Controllers
         [HttpGet]
         [Authorize]
         [Route("list-selectbox-car-update")]
-        public object GetsSelectBoxCarpdate(long fromDate, long toDate, string idSchedule)
+        public object GetsSelectBoxCarUpdate(long fromDate, long toDate, string idSchedule)
         {
-            res = _car.GetsSelectBoxCarUpdate(fromDate, toDate,idSchedule);
+            res = _car.GetsSelectBoxCarUpdate(fromDate, toDate, idSchedule);
             return Ok(res);
         }
         [HttpGet]
@@ -61,7 +77,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpPost]
-        [AllowAnonymous]
+        [Authorize]
         [Route("create-car")]
         public object Create([FromBody] JObject frmData)
         {
@@ -71,7 +87,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateCarViewModel>(result);
-                res = _car.Create(createObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _car.Create(createObj, emailUser);
             }
             else
             {
@@ -82,17 +99,19 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
+
         [HttpPut]
         [Authorize]
         [Route("update-car")]
-        public object UpdateRestaurant([FromBody] JObject frmData, Guid idCar)
+        public object UpdateCar([FromBody] JObject frmData, Guid idCar)
         {
             message = null;
             var result = _car.CheckBeforeSave(frmData, ref message, true);
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateCarViewModel>(result);
-                res = _car.UpdateCar(updateObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _car.UpdateCar(updateObj, emailUser);
             }
             else
             {
@@ -106,7 +125,8 @@ namespace TravelApi.Controllers
         [Route("delete-car")]
         public object DeleteCar(Guid idCar, Guid idUser)
         {
-            res = _car.DeleteCar(idCar, idUser);
+            var emailUser = GetEmailUserLogin().Value;
+            res = _car.DeleteCar(idCar, idUser, emailUser);
             return Ok(res);
         }
 
@@ -115,10 +135,10 @@ namespace TravelApi.Controllers
         [Route("restore-car")]
         public object RestoreCar(Guid idCar)
         {
-            res = _car.RestoreCar(idCar);
+            var emailUser = GetEmailUserLogin().Value;
+            res = _car.RestoreCar(idCar, emailUser);
             return Ok(res);
         }
-
         [HttpPost]
         [Authorize]
         [Route("search-car")]
@@ -127,5 +147,14 @@ namespace TravelApi.Controllers
             res = _car.SearchCar(frmData);
             return Ok(res);
         }
+        [HttpGet]
+        [Authorize]
+        [Route("list-schedule-of-car")]
+        public object GetListCarHaveSchedule(Guid idCar, int pageIndex, int pageSize)
+        {
+            res = _car.GetListCarHaveSchedule(idCar, pageIndex, pageSize);
+            return Ok(res);
+        }
+        
     }
 }

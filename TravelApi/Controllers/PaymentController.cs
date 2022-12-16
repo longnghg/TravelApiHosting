@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -19,12 +20,17 @@ namespace TravelApi.Controllers
         private IPayment pay;
         private Notification message;
         private Response res;
+        private readonly ILog _log;
         public PaymentController(IPayment _pay)
         {
             pay = _pay;
             res = new Response();
         }
-        
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
         [HttpGet]
         [AllowAnonymous]
         [Route("list-payment")]
@@ -44,8 +50,9 @@ namespace TravelApi.Controllers
             var result = pay.CheckBeforSave(frmData, ref message, false);
             if (message == null)
             {
-                var createObj = JsonSerializer.Deserialize<CreatePaymentViewModel>(result);
-                res = pay.Create(createObj);
+                var createObj = JsonSerializer.Deserialize<CreatePaymentViewModel>(result);            
+                var emailUser = GetEmailUserLogin().Value;
+                res = pay.Create(createObj, emailUser);
             }
             else
             {

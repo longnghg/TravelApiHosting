@@ -13,5 +13,7 @@ namespace Travel.Context.Models
         public double Rating { get; set; }
         public string IdTour { get; set; }
 
+        public Guid IdCustomer { get; set; }
+
     }
 }

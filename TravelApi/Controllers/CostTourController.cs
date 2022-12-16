@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -22,12 +23,19 @@ namespace TravelApi.Controllers
         private readonly ICostTour _costTourRes;
         private Notification message;
         private Response res;
-        public CostTourController(ICostTour costTourRes)
+        public CostTourController(ICostTour costTourRes , ILog log)
         {
             _costTourRes = costTourRes;
             res = new Response();
+
         }
-        
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
+        }
+
         [HttpGet]
         [Authorize]
         [Route("list-cost-tour")]
@@ -56,7 +64,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateCostViewModel>(result);
-                res = _costTourRes.Create(createObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _costTourRes.Create(createObj, emailUser);
             }
             else
             {
@@ -75,7 +84,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateCostViewModel>(result);
-                res = _costTourRes.Update(updateObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = _costTourRes.Update(updateObj, emailUser);
             }
             else
             {

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Travel.Context.Models;
 using Travel.Context.Models.Notification;
 using Travel.Context.Models.Travel;
 using Travel.Data.Interfaces.INotify;
@@ -22,22 +23,22 @@ namespace Travel.Data.Repositories.NotifyRes
             _notifyContext = notifyContext;
         }
 
-        public async Task<Response> Get(string idRole, Guid idEmp, bool IsSeen)
+        public async Task<Response> Get(string idRole, Guid idEmp, bool IsSeen, int pageSize)
         {
             try
             {
-                var listByRole = (from x in _notifyContext.Notifications
-                            where x.RoleId.Contains(idRole)
-                            select x);
+                //var listByRole = (from x in _notifyContext.Notifications
+                //            where x.RoleId.Contains(idRole)
+                //            select x);
              
 
                 var listByEmp = (from x in _notifyContext.Notifications
-                                 where x.EmployeeId == idEmp && x.RoleId.Contains(idRole)
+                                 where x.ReponseId == idEmp && x.RoleId.Contains(idRole)
                                  select x);
             
-                var list = listByRole.Concat(listByEmp).Distinct();
+                //var list = listByRole.Concat(listByEmp).Distinct();
 
-                var result = (from x in list
+                var result = (from x in listByEmp
                               orderby x.Time descending
                               select x);
 
@@ -49,11 +50,12 @@ namespace Travel.Data.Repositories.NotifyRes
 
                 if(IsSeen)
                 {
-                    res.Content = usSeen.ToList();
+                    
+                    res.Content = usSeen.Take(pageSize).ToList();
                 }
                 else
                 {
-                    res.Content = result.ToList();
+                    res.Content = result.Take(pageSize).ToList();
                 }
                 
                 res.TotalResult = usSeen.Count;
@@ -88,22 +90,58 @@ namespace Travel.Data.Repositories.NotifyRes
             }
         }
 
-        public void CreateNotification(Guid idEmployee, int Type, string ContentRequest, string RoleId, string Title)
+        public void CreateNotification(Guid idEmployee, int Type, string ContentRequest, int[] Roles, string Title)
         {
             try
             {
-                Notifications notification = new Notifications();
+                var listByRole = (from x in _db.Employees
+                                  where x.IsDelete == false && x.IsActive == true
+                                  select x);
+                var emp = new List<Employee>();
+                foreach (var role in Roles)
+                {
+                    if (emp.Count == 0)
+                    {
+                        emp = (from x in listByRole
+                               where x.RoleId == role
+                               select x).ToList();
+                    }
+                    else
+                    {
+                        var d = (from x in listByRole
+                                where x.RoleId == role
+                                 select x).ToList();
+                        emp = emp.Concat((from x in listByRole
+                                         where x.RoleId == role
+                                          select x).ToList()).ToList();
+                    }
+                }
 
-                notification.IdNotification = Guid.NewGuid();
-                notification.Time = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
-                notification.IsSeen = false;
-                notification.Title = Title;
-                notification.Content = ContentRequest;
-                notification.Type = Type;
-                notification.RoleId = RoleId;
-                notification.EmployeeId = idEmployee;
+                //foreach (var item in split)
+                //{
+                //    listByRole = (from x in  _db.Employees
+                //                  where x.RoleId = 
+                //                  select x);
+                //}
+                var notifications = new List<Notifications>();
+                foreach (var item in emp)
+                {
+                    
+                    Notifications notification = new Notifications();
+                    notification.IdNotification = Guid.NewGuid();
+                    notification.Time = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                    notification.IsSeen = false;
+                    notification.Title = Title;
+                    notification.Content = ContentRequest;
+                    notification.Type = Type;
+                    notification.RoleId = Ultility.ConvertListInt(Roles);
+                    notification.RequestId = idEmployee;
+                    notification.ReponseId = item.IdEmployee;
+                    notifications.Add(notification);
+                }
 
-                _notifyContext.Add(notification);
+
+                _notifyContext.AddRange(notifications);
                 _notifyContext.SaveChanges();
                 
             }

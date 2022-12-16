@@ -16,6 +16,9 @@ using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel.TourBookingVM;
 using Microsoft.Extensions.Configuration;
 using Travel.Shared.SpeedSMSAPI;
+using System.IO;
+using QRCoder;
+using Travel.Data.Interfaces.INotify;
 
 namespace Travel.Data.Repositories
 {
@@ -25,18 +28,25 @@ namespace Travel.Data.Repositories
         private readonly ISchedule _schedule;
         private readonly string keySecurity;
         private readonly IConfiguration _config;
-        private readonly ICustomer _customer;
-       
-        public TourBookingRes(TravelContext db,
+        private readonly ICustomer _customer; private Notification message;
+        private readonly ICache _cache;
+        private readonly ILog _log;
+        private INotification _notification;
+        public TourBookingRes(TravelContext db, ILog log, ICache cache,
             ISchedule schedule,
             ICustomer customer,
-            IConfiguration config)
+            IConfiguration config,
+            INotification notification)
         {
             _db = db;
+            _log = log;
             _schedule = schedule;
             _customer = customer;
             _config = config;
             keySecurity = _config["keySecurity"];
+            message = new Notification();
+            _cache = cache;
+            _notification = notification;
         }
         private void UpdateDatabase<T>(T input)
         {
@@ -150,7 +160,10 @@ namespace Travel.Data.Repositories
                 var pincode = PrCommon.GetString("pincode", frmData);
                 if (String.IsNullOrEmpty(pincode))
                 { }
-
+                var voucherCode = PrCommon.GetString("voucherCode", frmData);
+                if (String.IsNullOrEmpty(voucherCode))
+                {
+                }
                 var totalPrice = PrCommon.GetString("totalPrice", frmData);
                 if (String.IsNullOrEmpty(totalPrice))
                 {
@@ -198,6 +211,7 @@ namespace Travel.Data.Repositories
                 createObj.Pincode = $"PIN{Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now)}";
                 createObj.BookingDetails = createDetailObj;
                 createObj.CustomerId = customerId;
+                createObj.VoucherCode = voucherCode;
                 if (!string.IsNullOrEmpty(valuePromotion))
                 {
                     createObj.ValuePromotion = Convert.ToInt16(valuePromotion);
@@ -212,29 +226,43 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public async Task<Response> Create(CreateTourBookingViewModel input)
+        public async Task<Response> Create(CreateTourBookingViewModel input, string emailUser)
         {
             using var transaction = _db.Database.BeginTransaction();
-
             try
             {
                 Voucher vourcher = new Voucher();
                 // nếu có sài vourcher thì coi còn thời hạn hay ko
-                if (!string.IsNullOrEmpty(input.VoucherCode))
+                if (!string.IsNullOrEmpty(input.VoucherCode)) 
                 {
+                    var isTourInPromotion = (from s in _db.Schedules.AsNoTracking()
+                               join p in _db.Promotions.AsNoTracking()
+                               on s.PromotionId equals p.IdPromotion
+                               where s.IdSchedule == input.ScheduleId
+                               && p.Value != 0
+                               select s.IdSchedule).Count();
+                    if (isTourInPromotion > 0)
+                        return Ultility.Responses("Không thể áp dụng voucher cho tour đang có khuyến mãi !", Enums.TypeCRUD.Error.ToString());
+
                     var unixDateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
                      vourcher = await (from x in _db.Vouchers
                                     where x.Code == input.VoucherCode
                                     //&& x.CustomerId == input.CustomerId
                                     && x.EndDate >= unixDateTimeNow
                                     select x).FirstOrDefaultAsync();
+                    var voucherRemove = (from x in _db.Customer_Vouchers
+                                         where x.VoucherId == vourcher.IdVoucher
+                                         select x).First();
 
                     if (vourcher == null)
                     {
                         return  Ultility.Responses("Vourcher không tồn tại hoặc hết hạn !", Enums.TypeCRUD.Error.ToString());
                     }
+
                     var valueVourcher = vourcher.Value;
-                    input.TotalPrice = input.TotalPrice - (input.TotalPrice * (valueVourcher / 100)) ;
+                    input.TotalPrice = input.TotalPrice - (input.TotalPrice * (valueVourcher / 100));
+                    _db.Customer_Vouchers.Remove(voucherRemove);
+                    _db.SaveChanges();
                 }
                 else
                 {
@@ -279,47 +307,145 @@ namespace Travel.Data.Repositories
                 if (vourcher != null) // có áp dụng vourcher hợp lệ
                 {
                     var valueVourcher = vourcher.Value;
-                    totalPrice = totalPrice - (totalPrice * (valueVourcher / 100)); // áp dụng giảm giá của vourcher
+                    /*totalPrice = totalPrice - (totalPrice * (valueVourcher / 100));*/ // áp dụng giảm giá của vourcher
 
+                    decimal price =  (100m - valueVourcher) / 100m;
+                    totalPrice = totalPrice * (double)price;
+                    float totalPriceVoucher = (float)totalPrice;
+
+                    totalPrice = Math.Round(totalPriceVoucher);
                     totalPriceInput = Math.Round(input.TotalPrice); // đã qua tính vourcher
-                    if (totalPrice != totalPriceInput) // giá ko giống nhau
-                    {
-                        return Ultility.Responses("Hệ thống xảy ra lỗi, vui lòng thử lại !", Enums.TypeCRUD.Warning.ToString());
-                    }
+                    //if (totalPrice != totalPriceInput) // giá ko giống nhau
+                    //{
+                    //    return Ultility.Responses("Hệ thống xảy ra lỗi, vui lòng thử lại !", Enums.TypeCRUD.Warning.ToString());
+                    //}
                 }
 
                 #endregion
                 await transaction.CreateSavepointAsync("BeforeSave");
-            
+
                 tourbooking.TourBookingDetails = tourBookingDetail;
+                #region create qr
+                string qrCodeText = "123"; // cần truyền gì bỏ vào
+                string urlQR = AddImg(qrCodeText, tourbooking.IdTourBooking);
+                tourbooking.UrlQR = urlQR;
+                #endregion
                 CreateDatabase<TourBooking>(tourbooking);
                 CreateDatabase<TourBookingDetails>(tourBookingDetail);
                 await SaveChangeAsync();
-
+                _cache.Remove("schedule");
+                _cache.Remove("scheduleflashsale");
                 // cập nhật số lượng
                 int quantityAdult = tourbooking.TourBookingDetails.Adult;
                 int quantityChild = tourbooking.TourBookingDetails.Child;
                 int quantityBaby = tourbooking.TourBookingDetails.Baby;
                 await _schedule.UpdateCapacity(input.ScheduleId, quantityAdult, quantityChild, quantityBaby);
+
+
+             
                 transaction.Commit();
                 transaction.Dispose();
 
+                #region sms
                 //Gửi sms
                 //SpeedSMSAPI api = new SpeedSMSAPI("eHTE2iExhWKHCRk4OvTVT2gFHuPl4wDd");
                 //String[] phones = new String[] { tourbooking.Phone };
                 //String str = "Lụm";
                 //String response = api.sendSMS(phones, str, 5, "d675521d17749e04");
+                #endregion
+
+
 
                 #region send mail
-                Ultility.sendEmail("",input.Email,"Thông báo booking","Bạn vừa đặt tour !", keySecurity);
+                var subjectOTP = _config["OTPSubject"];
+                var emailSend = _config["emailSend"];
+                var keySecurity = _config["keySecurity"];
+                var linkbill = _config["Bill"];
+                var stringHtml = Ultility.getHtmlBookingSuccess(tourbooking.Pincode, tourbooking.NameCustomer, tourbooking.Phone, tourbooking.TotalPrice.ToString(), urlQR, "Chưa thanh toán");
+
+                Ultility.sendEmail(stringHtml, tourbooking.Email, "THÔNG BÁO ĐẶT TOUR", emailSend, keySecurity);
                 #endregion
-                return Ultility.Responses("Đặt tour thành công !", Enums.TypeCRUD.Success.ToString(), tourbooking.IdTourBooking);
+
+                #region send notifi
+                var nameTour = await (from s in _db.Schedules.AsNoTracking()
+                                   join t in _db.Tour.AsNoTracking()
+                                   on s.TourId equals t.IdTour
+                                   where s.Isdelete == false
+                                   && s.IdSchedule == input.ScheduleId
+                                   select t.NameTour).FirstOrDefaultAsync();
+
+                var idCus = await (from c in _db.Customers.AsNoTracking()
+                                      where c.IsDelete == false
+                                      && c.IsBlock == false
+                                      && c.Email == emailUser
+                                      select c.IdCustomer).FirstOrDefaultAsync();
+
+                _notification.CreateNotification(idCus, Convert.ToInt16(Enums.TypeNotification.TourBooking), nameTour, new int[] { Convert.ToInt16(Enums.TitleRole.TourBookingManager)}, "");
+                #endregion
+                
+                    return Ultility.Responses("Đặt tour thành công !", Enums.TypeCRUD.Success.ToString(), tourbooking.IdTourBooking);
+
+             
             }
             catch (Exception e)
             {
                 transaction.RollbackToSavepoint("BeforeSave");
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
                 ;
+            }
+        }
+        public byte[] ImageToByteArray(System.Drawing.Image imageIn)
+        {
+            MemoryStream ms = new MemoryStream();
+            imageIn.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+
+            return ms.ToArray();
+        }
+        public byte[] CreateByteQR(string qrCodeText)
+        {
+
+            QRCodeGenerator _qrCode = new QRCodeGenerator();
+            QRCodeData _qrCodeData = _qrCode.CreateQrCode(qrCodeText, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(_qrCodeData);
+            System.Drawing.Image qrCodeImage = qrCode.GetGraphic(20);
+            var bytes = ImageToByteArray(qrCodeImage);
+            return bytes;
+        }
+        public Response StatisticPaidNotCheckedin()
+        {
+            try
+            {
+                var list = (from x in _db.TourBookings.AsNoTracking()
+                            where x.Status == (int)Enums.StatusBooking.Paid &&
+                                  x.CheckIn == 0
+                            select x).ToList();
+
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), list);
+                res.TotalResult = list.Count;
+                return res;
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+        public string AddImg(string qrCodeText, string idService)
+        {
+            try
+            {
+                string urlQR = "";
+                var bytes = CreateByteQR(qrCodeText);
+                Travel.Context.Models.Image img = new Travel.Context.Models.Image();
+                using (Stream stream = new MemoryStream(bytes))
+                {
+                    urlQR = Ultility.UploadQR(stream, idService, ref message);
+                    
+                }
+                return urlQR;
+            }
+            catch (Exception e)
+            {
+                return null;
             }
         }
 
@@ -423,6 +549,7 @@ namespace Travel.Data.Repositories
                                          orderby x.DateBooking descending
                                          select new TourBooking
                                          {
+                                             
                                              IdTourBooking = x.IdTourBooking,
                                              LastDate = x.LastDate,
                                              NameCustomer = x.NameCustomer,
@@ -434,6 +561,8 @@ namespace Travel.Data.Repositories
                                              Status = x.Status,
                                              Address = x.Address,
                                              AdditionalPrice = x.AdditionalPrice,
+                                             Deposit = x.Deposit,
+                                             RemainPrice = x.RemainPrice,
                                              BookingNo = x.BookingNo,
                                              DateBooking = x.DateBooking,
                                              TotalPrice = x.TotalPrice,
@@ -459,8 +588,7 @@ namespace Travel.Data.Repositories
                                                              Tour = (from t in _db.Tour
                                                                      where t.IdTour == s.TourId
                                                                      select t).FirstOrDefault(),
-
-                                                         }).FirstOrDefault()
+                                                         }).FirstOrDefault(),
                                          }).FirstOrDefaultAsync();
                 return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), tourbooking);
 
@@ -470,29 +598,31 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-        public Response DoPayment(string idTourBooking) // for admin if customer payment
+        public async Task<Response> DoPayment(string idTourBooking) // for admin if customer payment
         {
             try
             {
-                var tourbooking = (from tb in _db.TourBookings.AsNoTracking()
+                var tourbooking = await (from tb in _db.TourBookings.AsNoTracking()
                                    where tb.IdTourBooking == idTourBooking
                                    && tb.Status == (int)Enums.StatusBooking.Paying
-                                   select tb).FirstOrDefault();
+                                   select tb).FirstOrDefaultAsync();
                 if (tourbooking != null)
                 {
                     var bookingNo = $"{tourbooking.IdTourBooking}NO";
+                    tourbooking.Deposit = tourbooking.TotalPrice;
                     tourbooking.Status = (int)Enums.StatusBooking.Paid;
                     tourbooking.BookingNo = bookingNo;
                     UpdateDatabase<TourBooking>(tourbooking);
-                    SaveChange();
+                    await SaveChangeAsync();
                     #region sendMail
 
                     var emailSend = _config["emailSend"];
                     var keySecurity = _config["keySecurity"];
-                    var stringHtml = Ultility.getHtml($"{bookingNo} <br> Vui lòng ghi nhớ mã BookingNo này", "Thanh toán thành công", "BookingNo");
+                    var stringHtml = Ultility.getHtmlBookingTicket($"{bookingNo} <br> Vui lòng ghi nhớ mã BookingNo này", "Thanh toán thành công", "BookingNo");
 
                     Ultility.sendEmail(stringHtml, tourbooking.Email, "Thanh toán dịch vụ", emailSend, keySecurity);
                     #endregion
+
                     return Ultility.Responses("Thanh toán thành công !", Enums.TypeCRUD.Success.ToString());
 
                 }
@@ -511,7 +641,7 @@ namespace Travel.Data.Repositories
         public async Task<Response> CancelBooking(string idTourBooking)
         {
             try
-            {
+            {            
                 var tourbooking = await (from tb in _db.TourBookings.AsNoTracking()
                                          where tb.IdTourBooking == idTourBooking
                                          && tb.Status == (int)Enums.StatusBooking.Paying
@@ -520,7 +650,17 @@ namespace Travel.Data.Repositories
                 {
                     tourbooking.Status = (int)Enums.StatusBooking.Cancel;
                     UpdateDatabase<TourBooking>(tourbooking);
+                    #region sendMail
+
+                    var emailSend = _config["emailSend"];
+                    var keySecurity = _config["keySecurity"];
+
+                    var stringHtml = Ultility.getHtmlBookingCancel(tourbooking.IdTourBooking, tourbooking.Email);
+
+                    Ultility.sendEmail(stringHtml, tourbooking.Email, "Thanh toán dịch vụ", emailSend, keySecurity);
+                    #endregion
                     SaveChange();
+
                     return Ultility.Responses("Đã hủy booking !", Enums.TypeCRUD.Success.ToString());
                 }
                 else
@@ -534,7 +674,7 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-        public async Task<Response> RestoreBooking(string idTourBooking)
+        public async Task<Response> RestoreBooking(string idTourBooking, string emailUser)
         {
             try
             {
@@ -547,15 +687,11 @@ namespace Travel.Data.Repositories
                     tourbooking.Status = (int)Enums.StatusBooking.Paying;
                     UpdateDatabase<TourBooking>(tourbooking);
                     SaveChange();
-                    //#region sendMail
-
-                    //var emailSend = _config["emailSend"];
-                    //var keySecurity = _config["keySecurity"];
-                    //var stringHtml = Ultility.getHtml($"{bookingNo} <br> Vui lòng ghi nhớ mã BookingNo này", "Thanh toán thành công", "BookingNo");
-
-                    //Ultility.sendEmail(stringHtml, tourbooking.Email, "Thanh toán dịch vụ", emailSend, keySecurity);
-                    //#endregion
-                    return Ultility.Responses("Đã hủy booking !", Enums.TypeCRUD.Success.ToString());
+                  
+                
+                        return Ultility.Responses("Đã hủy booking !", Enums.TypeCRUD.Success.ToString());
+                
+                   
                 }
                 else
                 {
@@ -707,7 +843,6 @@ namespace Travel.Data.Repositories
                 Keywords keywords = new Keywords();
                 var pageSize = PrCommon.GetString("pageSize", frmData) == null ? 10 : Convert.ToInt16(PrCommon.GetString("pageSize", frmData));
                 var pageIndex = PrCommon.GetString("pageIndex", frmData) == null ? 1 : Convert.ToInt16(PrCommon.GetString("pageIndex", frmData));
-
                 var kwId = PrCommon.GetString("IdTourBooking", frmData).Trim();
                 if (!String.IsNullOrEmpty(kwId))
                 {
@@ -728,16 +863,28 @@ namespace Travel.Data.Repositories
                     keywords.KwPincode = "";
 
                 }
-                var kwEmail = PrCommon.GetString("Email", frmData).Trim();
-                if (!String.IsNullOrEmpty(kwEmail))
+
+                var kwBookingNo = PrCommon.GetString("BookingNo", frmData).Trim();
+                if (!String.IsNullOrEmpty(kwBookingNo))
                 {
-                    keywords.KwEmail = kwEmail.Trim().ToLower();
+                    keywords.KwBookingNo = kwBookingNo.Trim().ToLower();
                 }
                 else
                 {
-                    keywords.KwEmail = "";
+                    keywords.KwBookingNo = "";
 
                 }
+
+                //var kwEmail = PrCommon.GetString("Email", frmData).Trim();
+                //if (!String.IsNullOrEmpty(kwEmail))
+                //{
+                //    keywords.KwEmail = kwEmail.Trim().ToLower();
+                //}
+                //else
+                //{
+                //    keywords.KwEmail = "";
+
+                //}
                 var kwPhone = PrCommon.GetString("phone", frmData).Trim();
                 if (!String.IsNullOrEmpty(kwPhone))
                 {
@@ -769,161 +916,145 @@ namespace Travel.Data.Repositories
                     keywords.KwToDate = 0;
                 }
 
-                var kwDate = PrCommon.GetString("DateBooking", frmData).Trim();
-                if (!String.IsNullOrEmpty(kwDate))
-                {
-                    keywords.KwDate = long.Parse(kwDate);
-                }
-                else
-                {
+                //var kwDate = PrCommon.GetString("DateBooking", frmData).Trim();
+                //if (!String.IsNullOrEmpty(kwDate))
+                //{
+                //    keywords.KwDate = long.Parse(kwDate);
+                //}
+                //else
+                //{
 
-                    keywords.KwDate = 0;
-                }
+                //    keywords.KwDate = 0;
+                //}
                 var kwIsCall = PrCommon.GetString("IsCalled", frmData);
 
                 if (!String.IsNullOrEmpty(kwIsCall))
                 {
                     keywords.kwIsCalled = Boolean.Parse(kwIsCall);
                 }
+
+                var status = PrCommon.GetString("status", frmData);
+                keywords.KwStatusList = PrCommon.getListInt(status, ',', false);
                 var listTourBooking = new List<TourBooking>();
+                #region filter
+                var queryListTourBooking = (from x in _db.TourBookings.AsNoTracking()
+                                            where
+                                                            x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
+                                                            x.Pincode.ToLower().Contains(keywords.KwPincode) &&
+                                                            x.BookingNo.ToLower().Contains(keywords.KwBookingNo) &&
+                                                            x.Phone.ToLower().Contains(keywords.KwPhone)
+                                                               
+                                            select x);
 
-                if (!string.IsNullOrEmpty(kwIsCall))
+                if (keywords.KwFromDate != 0 && keywords.KwToDate != 0)
                 {
-                    if (keywords.KwFromDate > 0 && keywords.KwToDate > 0)
-                    {
-                        var querylistTourBooking = (from x in _db.TourBookings
-                                           where
-                                                           x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                           x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                           x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                               x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                x.IsCalled == keywords.kwIsCalled &&
-                                                                 x.DateBooking >= keywords.KwFromDate &&
-                                               x.DateBooking <= keywords.KwToDate
-                                           orderby x.DateBooking descending
-                                           select x);
-                        totalResult = querylistTourBooking.Count();
-                        listTourBooking = querylistTourBooking.ToList();
-                    }
-                    else
-                    {
-                        if (keywords.KwFromDate == 0 && keywords.KwToDate > 0)
-                        {
-
-                            var querylistTourBooking = (from x in _db.TourBookings
-                                                        where
-                                                                        x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                                        x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                                        x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                                            x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                             x.IsCalled == keywords.kwIsCalled &&
-                                                                             x.DateBooking >= keywords.KwFromDate
-                                                        orderby x.DateBooking descending
-                                                        select x);
-                            totalResult = querylistTourBooking.Count();
-                            listTourBooking = querylistTourBooking.ToList();
-                        }
-                        else if (keywords.KwToDate == 0 && keywords.KwFromDate > 0)
-                        {
-                            var querylistTourBooking = (from x in _db.TourBookings
-                                                        where
-                                                                        x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                                        x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                                        x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                                            x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                             x.IsCalled == keywords.kwIsCalled &&
-                                                                           x.DateBooking >= keywords.KwFromDate
-                                                        orderby x.DateBooking descending
-                                                        select x);
-                            totalResult = querylistTourBooking.Count();
-                            listTourBooking = querylistTourBooking.ToList();
-                        }
-                        else
-                        {
-                            var querylistTourBooking = (from x in _db.TourBookings
-                                               where
-                                                               x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                               x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                               x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                                   x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                    x.IsCalled == keywords.kwIsCalled
-
-                                               orderby x.DateBooking descending
-                                               select x);
-                            totalResult = querylistTourBooking.Count();
-                            listTourBooking = querylistTourBooking.ToList();
-                        }
-                    }
+                    queryListTourBooking = from x in queryListTourBooking
+                                           where x.DateBooking >= keywords.KwFromDate
+                                           && x.DateBooking <= keywords.KwToDate
+                                           select x;
+                }else if (keywords.KwFromDate == 0 && keywords.KwToDate == 0)
+                {
                 }
                 else
                 {
-                    if (keywords.KwFromDate > 0 && keywords.KwToDate > 0)
+                    if (keywords.KwFromDate == 0)
                     {
-                        var querylistTourBooking = (from x in _db.TourBookings
-                                           where
-                                                           x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                           x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                           x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                               x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                              x.IsCalled == keywords.kwIsCalled &&
-                                                                x.DateBooking >= keywords.KwFromDate &&
-                                               x.DateBooking <= keywords.KwToDate
-                                           orderby x.DateBooking descending
-                                           select x);
-                        totalResult = querylistTourBooking.Count();
-                        listTourBooking = querylistTourBooking.ToList();
+                        queryListTourBooking = from x in queryListTourBooking
+                                               where x.DateBooking <= keywords.KwToDate
+                                               select x;
                     }
                     else
                     {
-                        if (keywords.KwFromDate == 0 && keywords.KwToDate > 0)
-                        {
-                            var querylistTourBooking = (from x in _db.TourBookings
-                                               where
-                                                               x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                               x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                               x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                                   x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                  x.IsCalled == keywords.kwIsCalled &&
-                                                                     x.DateBooking <= keywords.KwToDate
-                                               orderby x.DateBooking descending
-                                               select x);
-                            totalResult = querylistTourBooking.Count();
-                            listTourBooking = querylistTourBooking.ToList();
-                        }
-                        else if (keywords.KwToDate == 0 && keywords.KwFromDate > 0)
-                        {
-                            var querylistTourBooking = (from x in _db.TourBookings
-                                               where
-                                                               x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                               x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                               x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                                   x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                    x.IsCalled == keywords.kwIsCalled &&
-                                                                  x.DateBooking >= keywords.KwFromDate
-                                               orderby x.DateBooking descending
-                                               select x);
-                            totalResult = querylistTourBooking.Count();
-                            listTourBooking = querylistTourBooking.ToList();
-                        }
-                        else
-                        {
-                            var querylistTourBooking = (from x in _db.TourBookings
-                                               where
-                                                               x.IdTourBooking.ToLower().Contains(keywords.KwId) &&
-                                                               x.Pincode.ToLower().Contains(keywords.KwPincode) &&
-                                                               x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                                                   x.Email.ToLower().Contains(keywords.KwEmail) &&
-                                                                    x.IsCalled == keywords.kwIsCalled
-
-                                               orderby x.DateBooking descending
-                                               select x);
-                            totalResult = querylistTourBooking.Count();
-                            listTourBooking = querylistTourBooking.ToList();
-                        }
+                        queryListTourBooking = from x in queryListTourBooking
+                                               where x.DateBooking >= keywords.KwFromDate
+                                               select x;
                     }
-
-
                 }
+
+                if (!string.IsNullOrEmpty(kwIsCall))
+                {
+                    queryListTourBooking = from x in queryListTourBooking
+                                           where x.IsCalled == keywords.kwIsCalled
+                                           select x;
+                }
+
+                if (keywords.KwStatusList.Count > 0)
+                {
+                    queryListTourBooking = from x in queryListTourBooking
+                                           where keywords.KwStatusList.Contains(x.Status)
+                                           select x;
+                }
+                var kwPayment = PrCommon.GetString("Payment", frmData);
+                keywords.KwPayment = PrCommon.getListInt(kwPayment, ',', false);
+                if (keywords.KwPayment.Count > 0)
+                {
+                    queryListTourBooking = from x in queryListTourBooking
+                                           where keywords.KwPayment.Contains(x.PaymentId)
+                                           select x;
+                }
+                #endregion
+                var kwToPlace = PrCommon.GetString("ToPlace", frmData);
+               
+                totalResult = queryListTourBooking.Count();
+                queryListTourBooking = (from x in queryListTourBooking
+                                        orderby x.DateBooking descending
+                                        select new TourBooking
+                                        {
+                                            DateBooking = x.DateBooking,
+                                            Deposit = x.Deposit,
+                                            TourBookingDetails = (from tbkd in _db.tourBookingDetails.AsNoTracking()
+                                                                  where tbkd.IdTourBookingDetails == x.IdTourBooking
+                                                                 select tbkd).FirstOrDefault(),
+                                            ScheduleId = x.ScheduleId,
+                                            LastDate = x.LastDate,
+                                            ModifyDate = x.ModifyDate,
+                                            Schedule= (from s in _db.Schedules.AsNoTracking()
+                                                       where s.IdSchedule == x.ScheduleId
+                                                       select new Schedule
+                                                       {
+                                                           Tour = (from t in _db.Tour.AsNoTracking()
+                                                                  where t.IdTour == s.TourId
+                                                                  select t).FirstOrDefault(),
+                                                           DepartureDate = s.DepartureDate,
+                                                           DeparturePlace = s.DeparturePlace,
+                                                           ReturnDate = s.ReturnDate,
+                                                           IdSchedule = s.IdSchedule,
+                                                           TourId = s.TourId,
+                                                       }).FirstOrDefault(),
+                                            BookingNo = x.BookingNo,
+                                            AdditionalPrice = x.AdditionalPrice,
+                                            Address = x.Address,
+                                            CheckIn = x.CheckIn,
+                                            CheckOut = x.CheckOut,
+                                            CustomerId = x.CustomerId,
+                                            Email = x.Email,
+                                            IdTourBooking = x.IdTourBooking,
+                                            IsCalled = x.IsCalled,
+                                            ModifyBy = x.ModifyBy,
+                                            NameContact = x.NameContact,
+                                            NameCustomer = x.NameCustomer,
+                                            Payment = x.Payment,
+                                            PaymentId = x.PaymentId,
+                                            Phone = x.Phone,
+                                            Pincode = x.Pincode,
+                                            RemainPrice = x.RemainPrice,
+                                            Status = x.Status,
+                                            TotalPrice = x.TotalPrice,
+                                            TotalPricePromotion = x.TotalPricePromotion,
+                                            UrlQR = x.UrlQR,
+                                            ValuePromotion = x.ValuePromotion,
+                                            Vat = x.Vat,
+                                            VoucherCode = x.VoucherCode
+                                        });
+
+                if (!string.IsNullOrEmpty(kwToPlace))
+                {
+                    queryListTourBooking = (from x in queryListTourBooking
+                                            where x.Schedule.Tour.ToPlace == kwToPlace
+                                            select x);
+                }
+              
+                     listTourBooking = queryListTourBooking.AsNoTracking().Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                 var result = Mapper.MapTourBooking(listTourBooking);
                 var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
                 res.TotalResult = totalResult;
@@ -940,7 +1071,7 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdateStatus(string pincode)
+        public Response UpdateStatus(string pincode, string emailUser)
         {
             try
             {
@@ -952,6 +1083,7 @@ namespace Travel.Data.Repositories
                 {
                     if(tourBooking.Status == 1)
                     {
+
                         tourBooking.Status = (int)Enums.StatusBooking.Paid;
                         UpdateDatabase(tourBooking);
                     }
@@ -959,7 +1091,57 @@ namespace Travel.Data.Repositories
                     {
                         return Ultility.Responses($"Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
                     }
-                    return Ultility.Responses($"Đổi thành công !", Enums.TypeCRUD.Success.ToString());
+                    string jsonContent = JsonSerializer.Serialize(tourBooking);
+
+                    bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "TourBooking");
+                    if (result)
+                    {
+                        return Ultility.Responses($"Đổi thành công !", Enums.TypeCRUD.Success.ToString());
+
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
+                }
+                else
+                {
+                    return Ultility.Responses($"Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
+                }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+
+            }
+        }
+
+
+        public Response UpdateStatus(string idTourBooking, int status, string emailUser)
+        {
+            try
+            {
+                var tourBooking = (from x in _db.TourBookings.AsNoTracking()
+                                   where x.IdTourBooking == idTourBooking
+                                   select x).FirstOrDefault();
+
+                if (tourBooking != null)
+                {
+                    tourBooking.Status = status;
+                    UpdateDatabase(tourBooking);
+
+                    string jsonContent = JsonSerializer.Serialize(tourBooking);
+
+                    bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "TourBooking");
+                    if (result)
+                    {
+                        return Ultility.Responses($"Cập nhật thành công !", Enums.TypeCRUD.Success.ToString());
+
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
                 }
                 else
                 {
@@ -974,6 +1156,18 @@ namespace Travel.Data.Repositories
         }
 
         public async Task<TourBooking> GetTourBookingByIdForPayPal(string idTourBooking)
+        {
+            try
+            {
+                return await _db.TourBookings.FindAsync(idTourBooking);
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+
+        public async Task<TourBooking> GetTourBookingByIdForVnPay(string idTourBooking)
         {
             try
             {
@@ -1020,6 +1214,7 @@ namespace Travel.Data.Repositories
                             }
                         }
                         item.Status = (int)Enums.StatusBooking.Finished;
+                        item.CheckOut = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
                         UpdateDatabase(item);
                     }
                     SaveChange();
@@ -1030,6 +1225,112 @@ namespace Travel.Data.Repositories
             catch (Exception e)
             {
                 return false;
+            }
+        }
+    
+        public Response CheckInBooking(string bookingNo)
+        {
+            try
+            {
+                var tourBooking = (from x in _db.TourBookings.AsNoTracking()
+                                 where x.BookingNo == bookingNo
+                                 select x).FirstOrDefault();
+                if(tourBooking != null)
+                {
+                    tourBooking.CheckIn = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                    UpdateDatabase(tourBooking);
+                }
+                else
+                {
+                    return Ultility.Responses($"Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
+                }
+
+                return Ultility.Responses("Check in thành công !", Enums.TypeCRUD.Success.ToString());
+            }
+            catch(Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response CusSearchBookingNo(string bookingNo)
+        {
+            try
+            {
+                var tourBooking = (from x in _db.TourBookings.AsNoTracking()
+                                   where x.BookingNo == bookingNo
+                                   select new TourBooking
+                                   {
+                                       IdTourBooking = x.IdTourBooking,
+                                       LastDate = x.LastDate,
+                                       NameCustomer = x.NameCustomer,
+                                       NameContact = x.NameContact,
+                                       Pincode = x.Pincode,
+                                       ScheduleId = x.ScheduleId,
+                                       Email = x.Email,
+                                       Phone = x.Phone,
+                                       Status = x.Status,
+                                       Address = x.Address,
+                                       AdditionalPrice = x.AdditionalPrice,
+                                       BookingNo = x.BookingNo,
+                                       DateBooking = x.DateBooking,
+                                       TotalPrice = x.TotalPrice,
+                                       TotalPricePromotion = x.TotalPricePromotion,
+                                       VoucherCode = x.VoucherCode,
+                                       ValuePromotion = x.ValuePromotion,
+                                       Payment = (from p in _db.Payment.AsNoTracking()
+                                                  where p.IdPayment == x.PaymentId
+                                                  select p).FirstOrDefault(),
+                                       TourBookingDetails = (from tbd in _db.tourBookingDetails
+                                                             where tbd.IdTourBookingDetails == x.IdTourBooking
+                                                             select tbd).FirstOrDefault(),
+                                       Schedule = (from s in _db.Schedules
+                                                   where s.IdSchedule == x.ScheduleId
+                                                   select new Schedule
+                                                   {
+                                                       DepartureDate = s.DepartureDate,
+                                                       ReturnDate = s.ReturnDate,
+                                                       DeparturePlace = s.DeparturePlace,
+                                                       Description = s.Description,
+                                                       QuantityCustomer = s.QuantityCustomer,
+                                                       IdSchedule = s.IdSchedule,
+                                                       Tour = (from t in _db.Tour
+                                                               where t.IdTour == s.TourId
+                                                               select t).FirstOrDefault(),
+                                                   }).FirstOrDefault(),
+                                   }).FirstOrDefault();
+                if (tourBooking != null)
+                {       
+                    return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), tourBooking);
+                }
+                else
+                {
+                    return Ultility.Responses($"Số BookingNo: {bookingNo} Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
+                }
+            }
+            catch(Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public async Task<bool> ChangePayment(string idTourBooking, int idPayment)
+        {
+            try
+            {
+               
+                var tourBooking = (from x in _db.TourBookings.AsNoTracking()
+                                   where x.IdTourBooking == idTourBooking
+                                   select x).FirstOrDefault();
+
+                tourBooking.PaymentId = idPayment;
+                UpdateDatabase(tourBooking);
+                await SaveChangeAsync();
+               return true;
+            }
+            catch (Exception e)
+            {
+                return false;   
             }
         }
     }

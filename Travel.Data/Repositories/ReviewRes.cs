@@ -21,9 +21,11 @@ namespace Travel.Data.Repositories
         private readonly TravelContext _db;
         private Notification message;
         private Response res;
-        public ReviewRes(TravelContext db)
+        private readonly ILog _log;
+        public ReviewRes(TravelContext db, ILog log)
         {
             _db = db;
+            _log = log;
             message = new Notification();
             res = new Response();
         }
@@ -102,15 +104,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateReview(CreateReviewModel input)
+        public Response CreateReview(CreateReviewModel input,string emailUser)
         {
             try
             {
                 Review review = new Review();
                  review = Mapper.MapCreateReview(input);
+                string jsonContent = JsonSerializer.Serialize(review);
                 _db.reviews.Add(review);
                 _db.SaveChanges();
-                return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Review");
+                if (result)
+                {
+                    return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {

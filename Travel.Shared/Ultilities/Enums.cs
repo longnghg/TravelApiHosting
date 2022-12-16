@@ -8,6 +8,14 @@ namespace Travel.Shared.Ultilities
 {
     public  class Enums
     {
+        public enum ClassContent
+        {
+            Tour,
+            TourBooking,
+            Hotel,
+            Place,
+            Restaurant
+        }
         public enum StatusBooking
         {
             Pending = -2, // đã huỷu và đang chờ hoàn tiền
@@ -48,7 +56,10 @@ namespace Travel.Shared.Ultilities
             ServiceManager = 2,
             TourManager = 3,
             TourBookingManager = 4,
+            TourGuide = 5,
+            Supporter = 6
         }
+
         public enum StatusContract
         {
             Expired = 0,
@@ -83,7 +94,9 @@ namespace Travel.Shared.Ultilities
             Hotel = 1,
             Place = 2,
             Restaurant = 3,
-            Promotion = 4
+            Promotion = 4,
+            Schedule = 5,
+            TourBooking = 6,
         }
 
     }

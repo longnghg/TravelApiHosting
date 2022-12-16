@@ -19,10 +19,11 @@ namespace Travel.Data.Repositories
     public class LocationRes : ILocation
     {
         private readonly TravelContext _db;
-        private Notification message;
-        public LocationRes(TravelContext db)
+        private Notification message; private readonly ILog _log;
+        public LocationRes(TravelContext db , ILog log)
         {
             _db = db;
+            _log = log;
             message = new Notification();
         }
 
@@ -142,10 +143,15 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                var listProvince = (from x in _db.Provinces.AsNoTracking() orderby x.NameProvince select x).ToList();
-
+                var queryListProvince = (from x in _db.Provinces.AsNoTracking()
+                                    orderby x.NameProvince 
+                                    select x);
+                int totalResult = queryListProvince.Count();
+                var listProvince = queryListProvince.ToList();
                 var result = Mapper.MapProvince(listProvince);
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
             }
             catch (Exception e)
             {
@@ -158,9 +164,21 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                var listDistrict = (from x in _db.Districts.AsNoTracking() orderby x.Province.NameProvince, x.NameDistrict select x).ToList();
-                var result = Mapper.MapDistrict(listDistrict);
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                var queryListDistrict = (from x in _db.Districts.AsNoTracking() 
+                                         orderby x.Province.NameProvince, x.NameDistrict 
+                                         select x);
+
+
+
+                int totalResult = queryListDistrict.Count();
+                var list = queryListDistrict.ToList();
+                var result = Mapper.MapDistrict(list);
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
+
+
+            
 
             }
             catch (Exception e)
@@ -174,9 +192,15 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                var listWard = (from x in _db.Wards.AsNoTracking() orderby x.District.NameDistrict, x.NameWard select x).ToList();
-                var result = Mapper.MapWard(listWard);
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                var queryListWard = (from x in _db.Wards.AsNoTracking() orderby x.District.NameDistrict, x.NameWard select x);
+
+
+                int totalResult = queryListWard.Count();
+                var list = queryListWard.ToList();
+                var result = Mapper.MapWard(list);
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
 
             }
             catch (Exception e)
@@ -409,16 +433,25 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateProvince(CreateProvinceViewModel input)
+        public Response CreateProvince(CreateProvinceViewModel input, string emailUser)
         {
             try
             {
                 var province = Mapper.MapCreateProvince(input);
+                string jsonContent = JsonSerializer.Serialize(province);
                 _db.Provinces.Add(province);
                 _db.SaveChanges();
 
-
-                return Ultility.Responses($"Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Province");
+                if (result)
+                {      
+                    return Ultility.Responses($"Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
+ 
 
             }
             catch (Exception e)
@@ -427,15 +460,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateDistrict(CreateDistrictViewModel input)
+        public Response CreateDistrict(CreateDistrictViewModel input, string emailUser)
         {
             try
             {
                 var district = Mapper.MapCreateDistrict(input);
+                string jsonContent = JsonSerializer.Serialize(district);
                 _db.Districts.Add(district);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "District");
+                if (result)
+                {
+                    return Ultility.Responses($"Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
 
             }
             catch (Exception e)
@@ -445,15 +487,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateWard(CreateWardViewModel input)
+        public Response CreateWard(CreateWardViewModel input, string emailUser)
         {
             try
             {
                 var ward = Mapper.MapCreateWard(input);
+                string jsonContent = JsonSerializer.Serialize(ward);
                 _db.Wards.Add(ward);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Ward");
+                if (result)
+                {
+                    return Ultility.Responses($"Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
 
             }
             catch (Exception e)
@@ -463,15 +514,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdateProvince(UpdateProvinceViewModel input)
+        public Response UpdateProvince(UpdateProvinceViewModel input, string emailUser)
         {
             try
             {
                 var province = Mapper.MapUpdateProvince(input);
+                string jsonContent = JsonSerializer.Serialize(province);
                 _db.Provinces.Update(province);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Province");
+                if (result)
+                {
+                    return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
 
             }
             catch (Exception e)
@@ -481,15 +541,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdateDistrict(UpdateDistrictViewModel input)
+        public Response UpdateDistrict(UpdateDistrictViewModel input, string emailUser)
         {
             try
             {
                 var district = Mapper.MapUpdateDistrict(input);
+                string jsonContent = JsonSerializer.Serialize(district);
                 _db.Districts.Update(district);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "District");
+                if (result)
+                {
+                    return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
 
 
             }
@@ -500,15 +569,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdateWard(UpdateWardViewModel input)
+        public Response UpdateWard(UpdateWardViewModel input, string emailUser)
         {
             try
             {
                 var ward = Mapper.MapUpdateWard(input);
+                string jsonContent = JsonSerializer.Serialize(ward);
                 _db.Wards.Update(ward);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Ward");
+                if (result)
+                {
+                    return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -516,17 +594,32 @@ namespace Travel.Data.Repositories
 
             }
         }
-        public Response DeleteProvince(Guid idProvince)
+        public Response DeleteProvince(Guid idProvince, string emailUser)
         {
             try
             {
                 var province = _db.Provinces.Find(idProvince);
                 if (province != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(province);
                     _db.Provinces.Remove(province);
                     _db.SaveChanges();
+
+                    bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Province");
+                    if (result)
+                    {
+                        return Ultility.Responses("Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
                 }
-                return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                else
+                {
+                    return Ultility.Responses("Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
+
+                }
             }
             catch (Exception e)
             {
@@ -535,18 +628,31 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response DeleteDistrict(Guid idDistrict)
+        public Response DeleteDistrict(Guid idDistrict, string emailUser)
         {
             try
             {
                 var district = _db.Districts.Find(idDistrict);
                 if (district != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(district);
                     _db.Districts.Remove(district);
                     _db.SaveChanges();
+                    bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "District");
+                    if (result)
+                    {
+                        return Ultility.Responses("Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
+                }
+                else
+                {
+                    return Ultility.Responses("Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
 
                 }
-                return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
             }
             catch (Exception e)
             {
@@ -555,17 +661,31 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response DeleteWard(Guid idWard)
+        public Response DeleteWard(Guid idWard, string emailUser)
         {
             try
             {
                 var ward = _db.Wards.Find(idWard);
                 if (ward != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(ward);
                     _db.Wards.Remove(ward);
                     _db.SaveChanges();
+                    bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Ward");
+                    if (result)
+                    {
+                        return Ultility.Responses("Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
                 }
-                return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                else
+                {
+                    return Ultility.Responses("Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
+
+                }
             }
             catch (Exception e)
             {

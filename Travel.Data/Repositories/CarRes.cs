@@ -21,13 +21,18 @@ namespace Travel.Data.Repositories
     {
         private readonly TravelContext _db;
         private Notification message;
+        private readonly ILog _log;
         private Response res;
-        public CarRes(TravelContext db)
+        private ICache _cache;
+        public CarRes(TravelContext db, ILog log, ICache cache)
         {
             _db = db;
+            _log = log;
+            _cache = cache;
             message = new Notification();
             res = new Response();
         }
+
         private void UpdateDatabase<T>(T input)
         {
             _db.Entry(input).State = EntityState.Modified;
@@ -76,6 +81,12 @@ namespace Travel.Data.Repositories
                 var liscenseplate = PrCommon.GetString("liscenseplate", frmData);
                 if (!String.IsNullOrEmpty(liscenseplate))
                 {
+                    var check = CheckLiscensePlate(liscenseplate);
+                    if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                    {
+                        _message = check.Notification;
+                        return string.Empty;
+                    }
                 }
 
 
@@ -91,6 +102,7 @@ namespace Travel.Data.Repositories
                 var idUserModify = PrCommon.GetString("idUserModify", frmData);
                 if (String.IsNullOrEmpty(idUserModify))
                 {
+                    idUserModify = Guid.Empty.ToString() ;
                 }
 
                 if (isUpdate)
@@ -111,10 +123,17 @@ namespace Travel.Data.Repositories
                 CreateCarViewModel objCreate = new CreateCarViewModel();
                 //objCreate.IdCar = Guid.Parse(idCar);
                 objCreate.NameDriver = nameDriver;
-                objCreate.AmountSeat = int.Parse(amountSeat);
-                objCreate.Status = int.Parse(status);
-                objCreate.LiscensePlate = liscenseplate;
+                objCreate.AmountSeat = Convert.ToInt16(amountSeat);
+                objCreate.Status = Convert.ToInt16(status);
+                objCreate.LiscensePlate = liscenseplate.ToString();
                 objCreate.Phone = phone;
+                if (idUserModify == Guid.Empty.ToString())
+                {
+                    objCreate.IdUserModify = Guid.Parse(idUserModify);
+                    objCreate.ModifyBy = "Vô danh";
+                    objCreate.ModifyDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                    return JsonSerializer.Serialize(objCreate);
+                }
                 objCreate.IdUserModify = Guid.Parse(idUserModify);
                 objCreate.ModifyBy = GetCurrentUser(objCreate.IdUserModify).NameEmployee;
                 objCreate.ModifyDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
@@ -133,7 +152,28 @@ namespace Travel.Data.Repositories
             }
         }
 
+        public Response ViewSelectBoxCar(string idSchedule)
+        {
+            try
+            {
+                var carOfSchedule = (from x in _db.Schedules.AsNoTracking()
+                                     join
+                                        c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
+                                     where x.IdSchedule == idSchedule
+                                     select new
+                                     {
+                                         LiscensePlate = c.LiscensePlate,
+                                         CarId = x.CarId
+                                     }).FirstOrDefault();
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), carOfSchedule);
 
+            }
+            catch (Exception e)
+            {
+
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
 
         public Response GetsSelectBoxCar(long fromDate, long toDate)
         {
@@ -176,28 +216,7 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-        public Response ViewSelectBoxCar(string idSchedule)
-        {
-            try
-            {
-                var carOfSchedule = (from x in _db.Schedules.AsNoTracking()
-                                     join
-c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
-                                     where x.IdSchedule == idSchedule
-                                     select new
-                                     {
-                                         LiscensePlate = c.LiscensePlate,
-                                         CarId = x.CarId
-                                     }).FirstOrDefault();
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), carOfSchedule);
 
-            }
-            catch (Exception e)
-            {
-
-                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
-            }
-        }
         public Response GetsSelectBoxCarUpdate(long fromDate, long toDate, string idSchedule)
         {
             try
@@ -295,26 +314,40 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
         {
             try
             {
-                var listCar = (from x in _db.Cars.AsNoTracking()
-                               where x.IsDelete == isDelete
-                               select x).ToList();
+
+                var queryListCar = (from x in _db.Cars.AsNoTracking()
+                                    where x.IsDelete == isDelete
+                                    select x);
+                int totalResult = queryListCar.Count();
+                var listCar = queryListCar.ToList();
                 var result = Mapper.MapCar(listCar);
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
             }
             catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-        public Response Create(CreateCarViewModel input)
+        public Response Create(CreateCarViewModel input, string emailUser)
         {
             try
             {
                 Car car = new Car();
                 car = Mapper.MapCreateCar(input);
                 CreateDatabase<Car>(car);
+                string jsonContent = JsonSerializer.Serialize(car);
                 SaveChange();
-                return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Car");
+                if (result)
+                {
+                    return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -348,7 +381,7 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
             }
         }
 
-        public Response UpdateCar(UpdateCarViewModel input)
+        public Response UpdateCar(UpdateCarViewModel input, string emailUser)
         {
             try
             {
@@ -363,9 +396,19 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
                 car.Phone = input.Phone;
                 car.AmountSeat = input.AmountSeat;
                 car.Status = input.Status;
+                string jsonContent = JsonSerializer.Serialize(car);
                 UpdateDatabase<Car>(car);
                 SaveChange();
-                return Ultility.Responses("Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Car");
+                if (result)
+                {
+                    return Ultility.Responses("Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -373,25 +416,44 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
             }
         }
 
-        public Response DeleteCar(Guid id, Guid idUser)
+        public Response DeleteCar(Guid id, Guid idUser, string emailUser)
         {
             try
             {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
                 var car = (from x in _db.Cars.AsNoTracking()
                            where x.IdCar == id
                            select x).FirstOrDefault();
                 var userLogin = (from x in _db.Employees.AsNoTracking()
                                  where x.IdEmployee == idUser
                                  select x).FirstOrDefault();
+                var amountCarInSchedule = (from x in _db.Schedules.AsNoTracking()
+                                     where x.CarId == id
+                                     && x.ReturnDate > dateTimeNow
+                                     select x).Count();
+                if (amountCarInSchedule > 0)
+                {
+                    return Ultility.Responses("Xe đang có lịch trình !", Enums.TypeCRUD.Warning.ToString());
+                }
                 if (car != null)
                 {
                     car.ModifyBy = userLogin.NameEmployee;
                     car.IdUserModify = userLogin.IdEmployee;
                     car.ModifyDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
                     car.IsDelete = true;
+                    string jsonContent = JsonSerializer.Serialize(car);
                     UpdateDatabase<Car>(car);
                     SaveChange();
-                    return Ultility.Responses("Đã xóa !", Enums.TypeCRUD.Success.ToString());
+
+                    bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Car");
+                    if (result)
+                    {
+                        return Ultility.Responses("Đã xóa !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
                 }
                 else
                 {
@@ -407,7 +469,7 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
             }
         }
 
-        public Response RestoreCar(Guid id)
+        public Response RestoreCar(Guid id, string emailUser)
         {
             try
             {
@@ -416,11 +478,21 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
                            select x).FirstOrDefault();
                 if (car != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(car);
                     car.IsDelete = false;
                     UpdateDatabase<Car>(car);
                     SaveChange();
 
-                    return Ultility.Responses("Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
+                    bool result = _log.AddLog(content: jsonContent, type: "restore", emailCreator: emailUser, classContent: "Car");
+                    if (result)
+                    {
+                        return Ultility.Responses("Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
+
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
 
                 }
                 else
@@ -442,7 +514,10 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
         {
             try
             {
+                var totalResult = 0;
                 Keywords keywords = new Keywords();
+                var pageSize = PrCommon.GetString("pageSize", frmData) == null ? 10 : Convert.ToInt16(PrCommon.GetString("pageSize", frmData));
+                var pageIndex = PrCommon.GetString("pageIndex", frmData) == null ? 1 : Convert.ToInt16(PrCommon.GetString("pageIndex", frmData));
 
                 var isDelete = PrCommon.GetString("isDelete", frmData);
                 if (!String.IsNullOrEmpty(isDelete))
@@ -455,17 +530,29 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
                 {
                     keywords.KwName = kwName.Trim().ToLower();
                 }
+                else
+                {
+                    keywords.KwName = "";
+                }
 
                 var kwAmountSeat = PrCommon.GetString("amountSeat", frmData);
                 if (!String.IsNullOrEmpty(kwAmountSeat))
                 {
                     keywords.KwAmount = int.Parse(kwAmountSeat);
                 }
+                else
+                {
+                    keywords.KwAmount = 0;
+                }
 
                 var kwLiscensePlate = PrCommon.GetString("liscenseplate", frmData);
                 if (!String.IsNullOrEmpty(kwLiscensePlate))
                 {
                     keywords.KwLiscensePlate = kwLiscensePlate.Trim().ToLower();
+                }
+                else
+                {
+                    keywords.KwLiscensePlate = "";
                 }
 
 
@@ -474,43 +561,84 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
                 {
                     keywords.KwPhone = kwPhone.Trim().ToLower();
                 }
-
-                var status = PrCommon.GetString("status", frmData);
-                if (!String.IsNullOrEmpty(status))
+                else
                 {
+                    keywords.KwPhone = "";
                 }
 
+
+                var status = PrCommon.GetString("status", frmData);
+                keywords.KwStatusList = PrCommon.getListInt(status, ',', false);
+
                 var listCar = new List<Car>();
-                if (!string.IsNullOrEmpty(isDelete))
+
+                if (keywords.KwStatusList.Count > 0)
                 {
-                    listCar = (from x in _db.Cars.AsNoTracking()
-                               where x.IsDelete == keywords.IsDelete &&
-                                               x.NameDriver.ToLower().Contains(keywords.KwName) &&
-                                               x.LiscensePlate.ToLower().Contains(keywords.KwLiscensePlate) &&
-                                               x.Phone.ToLower().Contains(keywords.KwPhone) &&
-                                               x.AmountSeat == keywords.KwAmount
-                               select x).ToList();
+                    if (!string.IsNullOrEmpty(kwAmountSeat))
+                    {
+                        var querylistCar = (from x in _db.Cars.AsNoTracking()
+                                            where x.IsDelete == keywords.IsDelete &&
+                                                            x.AmountSeat.Equals(keywords.KwAmount) &&
+                                                             x.NameDriver.ToLower().Contains(keywords.KwName) &&
+                                                  x.LiscensePlate.ToLower().Contains(keywords.KwLiscensePlate) &&
+                                                  x.Phone.ToLower().Contains(keywords.KwPhone) &&
+                                                  keywords.KwStatusList.Contains(x.Status)
+                                            orderby x.ModifyDate descending
+                                            select x);
+                        totalResult = querylistCar.Count();
+                        listCar = querylistCar.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                    }
+                    else
+                    {
+                        var querylistCar = (from x in _db.Cars
+                                            where x.IsDelete == keywords.IsDelete &&
+                                                               x.NameDriver.ToLower().Contains(keywords.KwName) &&
+                                                    x.LiscensePlate.ToLower().Contains(keywords.KwLiscensePlate) &&
+                                                    x.Phone.ToLower().Contains(keywords.KwPhone) &&
+                                                    keywords.KwStatusList.Contains(x.Status)
+                                            orderby x.ModifyDate descending
+                                            select x);
+                        totalResult = querylistCar.Count();
+                        listCar = querylistCar.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                    }
+
                 }
                 else
                 {
                     if (!string.IsNullOrEmpty(kwAmountSeat))
                     {
-                        listCar = (from x in _db.Cars.AsNoTracking()
-                                   where x.IsDelete == keywords.IsDelete &&
-                                                   x.AmountSeat.Equals(keywords.KwAmount)
-                                   select x).ToList();
+                        var querylistCar = (from x in _db.Cars.AsNoTracking()
+                                            where x.IsDelete == keywords.IsDelete &&
+                                                            x.AmountSeat.Equals(keywords.KwAmount) &&
+                                                             x.NameDriver.ToLower().Contains(keywords.KwName) &&
+                                                  x.LiscensePlate.ToLower().Contains(keywords.KwLiscensePlate) &&
+                                                  x.Phone.ToLower().Contains(keywords.KwPhone)
+                                            orderby x.ModifyDate descending
+                                            select x);
+                        totalResult = querylistCar.Count();
+                        listCar = querylistCar.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                     }
                     else
                     {
-                        listCar = (from x in _db.Cars.AsNoTracking()
-                                   where x.IsDelete == keywords.IsDelete
-                                   select x).ToList();
+                        var querylistCar = (from x in _db.Cars.AsNoTracking()
+                                            where x.IsDelete == keywords.IsDelete &&
+                                                  x.NameDriver.ToLower().Contains(keywords.KwName) &&
+                                                  x.LiscensePlate.ToLower().Contains(keywords.KwLiscensePlate) &&
+                                                  x.Phone.ToLower().Contains(keywords.KwPhone)
+                                            orderby x.ModifyDate descending
+                                            select x);
+                        totalResult = querylistCar.Count();
+                        listCar = querylistCar.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                     }
                 }
+
+
                 var result = Mapper.MapCar(listCar);
-                if (listCar.Count() > 0)
+                if (result.Count() > 0)
                 {
-                    return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    res.TotalResult = totalResult;
+                    return res;
                 }
                 else
                 {
@@ -523,6 +651,66 @@ c in _db.Cars.AsNoTracking() on x.CarId equals c.IdCar
             }
         }
 
+        public Response GetListCarHaveSchedule(Guid idCar, int pageIndex, int pageSize)
+        {
+            try
+            {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                var lsResult = (from x in _db.Schedules.AsNoTracking()
+                                where x.CarId == idCar
+                                && x.ReturnDate >= dateTimeNow
+                                orderby x.DepartureDate ascending
+                                select new Schedule
+                                {
+                                    BeginDate = x.ReturnDate,
+                                    Car = (from c in _db.Cars.AsNoTracking()
+                                           where c.IdCar == idCar
+                                           select c).FirstOrDefault(),
+                                    QuantityCustomer = x.QuantityCustomer,
+                                    DepartureDate = x.DepartureDate,
+                                    DeparturePlace = x.DeparturePlace,
+                                    ReturnDate = x.ReturnDate,
+                                    Tour = (from t in _db.Tour.AsNoTracking()
+                                            where t.IdTour == x.TourId
+                                            select t).FirstOrDefault(),
+                                    Employee = (from e in _db.Employees.AsNoTracking()
+                                                where e.IdEmployee == x.EmployeeId
+                                                select e).FirstOrDefault(),
+                                    Status = x.Status
+                                });
+                var result = lsResult.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = lsResult.Count();
+                return res;
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+        private Response CheckLiscensePlate(string LiscensePlate)
+        {
+            try
+            {
+                    var oriPlateNumber = LiscensePlate.Replace("-", "");
+             
+                    var obj = (from x in _db.Cars.AsNoTracking()
+                               where x.LiscensePlate.Replace("-", "") == oriPlateNumber
+                               select x).FirstOrDefault();
+                    if (obj != null)
+                    {
+                        return Ultility.Responses("[" + LiscensePlate + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                    }
+                return res;
+
+            }
+            catch (Exception e)
+            {
+
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+
+            }
+        }
 
     }
 }

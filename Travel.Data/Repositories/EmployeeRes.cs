@@ -25,12 +25,14 @@ namespace Travel.Data.Repositories
         private Notification message;
         private Response res;
         private readonly IConfiguration _config;
-        public EmployeeRes(TravelContext db, IConfiguration config)
+        private readonly ILog _log;
+        public EmployeeRes(TravelContext db, IConfiguration config , ILog log)
         {
             _db = db;
             message = new Notification();
             res = new Response();
             _config = config;
+            _log = log;
         }
         private void UpdateDatabase(Employee input)
         {
@@ -54,6 +56,7 @@ namespace Travel.Data.Repositories
                     var nameEmployee = PrCommon.GetString("nameEmployee", frmData);
                     if (String.IsNullOrEmpty(nameEmployee))
                     {
+
                     }
 
                     var email = PrCommon.GetString("email", frmData);
@@ -211,7 +214,7 @@ namespace Travel.Data.Repositories
                 //var b5 = stopWatch5.Elapsed;
                 #endregion
 
-                var listEmp = (from x in _db.Employees.AsNoTracking()
+                var queryListEmp = (from x in _db.Employees.AsNoTracking()
                                where x.IsDelete == isDelete && x.IsActive
                                orderby x.RoleId
                                select new Employee
@@ -233,11 +236,13 @@ namespace Travel.Data.Repositories
                                    Phone = x.Phone,
                                    Role = (from r in _db.Roles.AsNoTracking() where r.IdRole == x.RoleId select r).First(),
                                    RoleId = x.RoleId,
-                               }).ToList();
-
+                               });
+                int totalResult = queryListEmp.Count();
+                var listEmp = queryListEmp.ToList();
                 var result = Mapper.MapEmployee(listEmp);
-
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
             }
             catch (Exception e)
             {
@@ -247,18 +252,25 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateEmployee(CreateEmployeeViewModel input)
+        public Response CreateEmployee(CreateEmployeeViewModel input, string emailUser)
         {
             try
             {
                 Employee employee = Mapper.MapCreateEmployee(input);
                 employee.IsActive = true;
                 employee.Password = "3244185981728979115075721453575112";
-
+                string jsonContent = JsonSerializer.Serialize(employee);
                 _db.Employees.Add(employee);
                 _db.SaveChanges();
-
-                return Ultility.Responses("Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Employee");
+                if (result)
+                {    return Ultility.Responses("Tạo mới thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
+            
             }
             catch (Exception e)
             {
@@ -266,14 +278,24 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdateEmployee(UpdateEmployeeViewModel input)
+        public Response UpdateEmployee(UpdateEmployeeViewModel input, string emailUser)
         {
             try
             {
                 Employee employee = Mapper.MapCreateEmployee(input);
+                string jsonContent = JsonSerializer.Serialize(employee);
                 _db.Employees.Update(employee);
                 _db.SaveChanges();
-                return Ultility.Responses("Chỉnh sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Employee");
+                if (result)
+                {
+                    return Ultility.Responses("Chỉnh sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
+               
             }
             catch (Exception e)
             {
@@ -513,7 +535,7 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response RestoreEmployee(Guid idEmployee)
+        public Response RestoreEmployee(Guid idEmployee, string emailUser)
         {
             try
             {
@@ -522,12 +544,23 @@ namespace Travel.Data.Repositories
                                 select x).FirstOrDefault();
                 if (employee != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(employee);
+
                     employee.IsDelete = false;
                     UpdateDatabase(employee);
                     _db.SaveChanges();
+                    bool result = _log.AddLog(content: jsonContent, type: "restore", emailCreator: emailUser, classContent: "Employee");
+                    if (result)
+                    {
+                        return Ultility.Responses($"Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
 
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
 
-                    return Ultility.Responses($"Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
+               
 
                 }
                 else
@@ -544,7 +577,7 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response DeleteEmployee(Guid idEmployee)
+        public Response DeleteEmployee(Guid idEmployee, string emailUser)
         {
             try
             {
@@ -555,12 +588,22 @@ namespace Travel.Data.Repositories
                 {
                     if (employee != null)
                     {
+                        string jsonContent = JsonSerializer.Serialize(employee);
+
                         employee.IsDelete = true;
                         UpdateDatabase(employee);
                         _db.SaveChanges();
 
-                        return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                        bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Employee");
+                        if (result)
+                        {
+                            return Ultility.Responses($"Xóa thành công !", Enums.TypeCRUD.Success.ToString());
 
+                        }
+                        else
+                        {
+                            return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                        }
                     }
                     else
                     {
@@ -591,7 +634,7 @@ namespace Travel.Data.Repositories
                            where x.IsDelete == false && x.Email == email select x).Count();
                 if (emp > 0)
                 {
-                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Warning.ToString());
+                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
                 }
                 return res;
             }
@@ -607,7 +650,7 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                if (idEmployee != null) // update
+                if (!string.IsNullOrEmpty(idEmployee)) // update
                 {
                     Guid id = Guid.Parse(idEmployee);
                     string oldPhone = (from x in _db.Employees.AsNoTracking()
@@ -617,7 +660,7 @@ namespace Travel.Data.Repositories
                         var obj = (from x in _db.Employees where x.Phone != oldPhone && x.Phone == phone select x).Count();
                         if (obj > 0)
                         {
-                            return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Warning.ToString());
+                            return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
                         }
                     }
                 }
@@ -626,7 +669,7 @@ namespace Travel.Data.Repositories
                     var emp = (from x in _db.Employees where x.Phone == phone select x).Count();
                     if (emp > 0)
                     {
-                        return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Warning.ToString());
+                        return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
                     }
                 }
                 return res;
@@ -709,8 +752,6 @@ namespace Travel.Data.Repositories
                     obj.BeginTime = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(begin);
                     obj.EndTime = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(end);
                     obj.OTPCode = otpCode;
-                    await _db.OTPs.AddAsync(obj);
-                    await _db.SaveChangesAsync();
 
                     var subjectOTP = _config["OTPSubject"];
                     var emailSend = _config["emailSend"];
@@ -725,6 +766,178 @@ namespace Travel.Data.Repositories
                 {
                     return Ultility.Responses($"{email} không tồn tại!", Enums.TypeCRUD.Error.ToString());
                 }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+        public async Task<Response> SendFile(string email)
+        {
+            try
+            {
+                var account = (from x in _db.Employees.AsNoTracking()
+                               where x.Email.ToLower() == email.ToLower()
+                               select x).FirstOrDefault();
+                if (account != null)
+                {
+                    string otpCode = Ultility.RandomString(8, false);
+                    OTP obj = new OTP();
+                    var dateTime = DateTime.Now;
+                    var begin = dateTime;
+                    var end = dateTime.AddMinutes(2);
+                    obj.BeginTime = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(begin);
+                    obj.EndTime = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(end);
+                    obj.OTPCode = otpCode;
+
+                    // var subjectOTP = _config["OTPSubject"];
+                    var emailSend = _config["emailSend"];
+                    var keySecurity = _config["keySecurity"];
+                    var stringHtml = Ultility.getHtmtFile();
+
+                    Ultility.sendEmailUploadFile(stringHtml, email, "TravelRover gửi đến quý khách hàng File báo cáo", emailSend, keySecurity);
+                    return Ultility.Responses($"File Đã được gửi {email}!", Enums.TypeCRUD.Success.ToString(), obj);
+
+                }
+                else
+                {
+                    return Ultility.Responses($"{email} không tồn tại!", Enums.TypeCRUD.Error.ToString());
+                }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response GetsSelectBoxEmployee(long fromDate, long toDate)
+        {
+            try
+            {
+                var unixTimeOneDay = 86400000;
+
+                var listEmployeeShouldRemove1 = (from x in _db.Schedules.AsNoTracking()
+                                            where (fromDate >= x.DepartureDate && fromDate < (x.ReturnDate + unixTimeOneDay))
+                                            && x.Isdelete == false
+                                            orderby x.ReturnDate ascending
+                                            select x.EmployeeId);
+
+                var scheduleDepartDateLargerToDate = (from x in _db.Schedules.AsNoTracking()
+                                                      where x.DepartureDate >= fromDate
+                                                        && x.Isdelete == false
+                                                      orderby x.DepartureDate ascending
+                                                      select x);
+                var listEmployeeShouldRemove2 = (from x in scheduleDepartDateLargerToDate
+                                            where !(from s in listEmployeeShouldRemove1 select s).Contains(x.EmployeeId)
+                                              && x.Isdelete == false
+                                            && (toDate + unixTimeOneDay) > x.DepartureDate
+                                            select x.EmployeeId).Distinct();
+
+                var listShouldRemove = listEmployeeShouldRemove1.Concat(listEmployeeShouldRemove2);
+
+                var listEmployee = (from x in _db.Employees.AsNoTracking()
+                               where !listShouldRemove.Any(e => e == x.IdEmployee)
+                                 && x.IsDelete == false && x.IsActive == true && x.RoleId == Convert.ToInt32(TitleRole.TourGuide)
+                               select x).ToList();
+                if (listEmployee.Count() == 0)
+                {
+                    return Ultility.Responses("Ngày bạn chọn hiện tại không có hướng dẫn viên !", Enums.TypeCRUD.Warning.ToString());
+                }
+                var result = Mapper.MapEmployee(listEmployee);
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response GetsSelectBoxEmployeeUpdate(long fromDate, long toDate, string idSchedule)
+        {
+            try
+            {
+                var unixTimeOneDay = 86400000;
+                var employeeOfSchedule = (from x in _db.Schedules.AsNoTracking()
+                                     where x.IdSchedule == idSchedule
+                                     && x.Isdelete == false
+                                     select x).FirstOrDefault();
+                var fromDateCurrentUpdate = employeeOfSchedule.DepartureDate;
+                var toDateCurrentUpdate = employeeOfSchedule.ReturnDate;
+                IQueryable<Guid> listEmployeeShouldRemove1;
+                IQueryable<Schedule> scheduleDepartDateLargerToDate;
+                if (fromDate == fromDateCurrentUpdate && toDate == toDateCurrentUpdate)
+                {
+                    listEmployeeShouldRemove1 = (from x in _db.Schedules.AsNoTracking()
+                                            where x.EmployeeId != employeeOfSchedule.EmployeeId
+                                             && x.Isdelete == false
+                                            && (fromDate >= x.DepartureDate && fromDate < (x.ReturnDate + unixTimeOneDay))
+                                            orderby x.ReturnDate ascending
+                                            select x.CarId);
+                    scheduleDepartDateLargerToDate = (from x in _db.Schedules.AsNoTracking()
+                                                      where x.EmployeeId != employeeOfSchedule.EmployeeId
+                                                       && x.Isdelete == false
+                                                      && x.DepartureDate >= fromDate
+                                                      orderby x.DepartureDate ascending
+                                                      select x);
+                }
+                else
+                {
+                    if ((fromDate >= fromDateCurrentUpdate && fromDate <= toDateCurrentUpdate) || toDate >= fromDateCurrentUpdate && toDate <= toDateCurrentUpdate)
+                    {
+                        listEmployeeShouldRemove1 = (from x in _db.Schedules.AsNoTracking()
+                                                where (fromDate >= x.DepartureDate && fromDate < (x.ReturnDate + unixTimeOneDay))
+                                                 && x.Isdelete == false
+                                                && x.IdSchedule != idSchedule
+                                                orderby x.ReturnDate ascending
+                                                select x.EmployeeId);
+
+                        scheduleDepartDateLargerToDate = (from x in _db.Schedules.AsNoTracking()
+                                                          where x.DepartureDate >= fromDate
+                                                           && x.Isdelete == false
+                                                                && x.IdSchedule != idSchedule
+                                                          orderby x.DepartureDate ascending
+                                                          select x);
+                    }
+                    else
+                    {
+                        listEmployeeShouldRemove1 = (from x in _db.Schedules.AsNoTracking()
+                                                where (fromDate >= x.DepartureDate && fromDate < (x.ReturnDate + unixTimeOneDay))
+                                                 && x.Isdelete == false
+                                                orderby x.ReturnDate ascending
+                                                select x.EmployeeId);
+
+                        scheduleDepartDateLargerToDate = (from x in _db.Schedules.AsNoTracking()
+                                                          where x.DepartureDate >= fromDate
+                                                           && x.Isdelete == false
+                                                          orderby x.DepartureDate ascending
+                                                          select x);
+                    }
+
+                }
+
+
+
+
+
+                var listEmployeeShouldRemove2 = (from x in scheduleDepartDateLargerToDate
+                                            where !(from s in listEmployeeShouldRemove1 select s).Contains(x.EmployeeId)
+                                            && (toDate + unixTimeOneDay) > x.DepartureDate
+                                             && x.Isdelete == false
+                                            select x.EmployeeId).Distinct();
+
+                var listShouldRemove = listEmployeeShouldRemove1.Concat(listEmployeeShouldRemove2);
+
+
+                var listEmployeeCanChoose = (from x in _db.Employees.AsNoTracking()
+                                        where !listShouldRemove.Any(c => c == x.IdEmployee)
+                                         && x.IsDelete == false && x.IsActive == true && x.RoleId == Convert.ToInt32(TitleRole.TourGuide)
+                                             select x).ToList();
+                if (listEmployeeCanChoose.Count() == 0)
+                {
+                    return Ultility.Responses("Ngày bạn chọn hiện tại không có hướng dẫn viên !", Enums.TypeCRUD.Warning.ToString());
+                }
+                var result = Mapper.MapEmployee(listEmployeeCanChoose);
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
             }
             catch (Exception e)
             {

@@ -9,9 +9,9 @@ namespace Travel.Data.Interfaces.INotify
 {
     public interface INotification
     {
-        Task<Response> Get(string idRole, Guid idEmp, bool IsSeen);
+        Task<Response> Get(string idRole, Guid idEmp, bool IsSeen, int pageSize);
         Task<Response> UpdateIsSeen(Guid idNotification);
-        void CreateNotification(Guid idEmployee, int Type, string Content, string RoleId, string Name);
+        void CreateNotification(Guid idEmployee, int Type, string Content, int[] RoleId, string Name);
         Task<Response> Delete(Guid idNotification);
     }
 }

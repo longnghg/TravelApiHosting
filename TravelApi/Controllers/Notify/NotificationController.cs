@@ -24,16 +24,16 @@ namespace TravelApi.Controllers.Notify
         [HttpGet]
         [Authorize]
         [Route("list-notification")]
-        public async Task<object> Get(string idRole, Guid idEmp, bool IsSeen)
+        public async Task<object> Get(string idRole, Guid idEmp, bool IsSeen, int pageSize)
         {
-            res = await _notification.Get(idRole, idEmp, IsSeen);
+            res = await _notification.Get(idRole, idEmp, IsSeen, pageSize);
             return Ok(res);
         }
 
         [HttpPut]
         [Authorize]
         [Route("update-isSeen-notification")]
-        public async Task<object> UpdateIsSeen(Guid idNotification)
+        public async Task<object> UpdateIsSeen(Guid idNotification) 
         {
             res = await _notification.UpdateIsSeen(idNotification);
             return Ok(res);

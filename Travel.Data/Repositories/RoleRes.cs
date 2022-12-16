@@ -16,14 +16,16 @@ using Travel.Shared.ViewModels.Travel;
 
 namespace Travel.Data.Repositories
 {
-    public class RoleRes: IRole
+    public class RoleRes : IRole
     {
         private readonly TravelContext _db;
         private Notification message;
         private Response res;
-        public RoleRes(TravelContext db)
+        private readonly ILog _log;
+        public RoleRes(TravelContext db, ILog log)
         {
             _db = db;
+            _log = log;
             message = new Notification();
             res = new Response();
         }
@@ -36,15 +38,26 @@ namespace Travel.Data.Repositories
                 if (String.IsNullOrEmpty(idRole))
                 {
                 }
-
                 var nameRole = PrCommon.GetString("nameRole", frmData);
-                if (String.IsNullOrEmpty(nameRole))
+                if (!String.IsNullOrEmpty(nameRole))
                 {
+                    var check = CheckSameRole(nameRole);
+                    if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                    {
+                        _message = check.Notification;
+                        return string.Empty;
+                    }
                 }
 
                 var description = PrCommon.GetString("description", frmData);
-                if (String.IsNullOrEmpty(description))
+                if (!String.IsNullOrEmpty(description))
                 {
+                    var check = CheckSameRole(description);
+                    if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                    {
+                        _message = check.Notification;
+                        return string.Empty;
+                    }
                 }
                 if (isUpdate)
                 {
@@ -54,14 +67,13 @@ namespace Travel.Data.Repositories
                     objUpdate.Description = description;
                     return JsonSerializer.Serialize(objUpdate);
                 }
-
                 CreateRoleViewModel objCreate = new CreateRoleViewModel();
                 //objCreate.IdRole = int.Parse(idRole);
                 objCreate.NameRole = nameRole;
                 objCreate.Description = description;
                 return JsonSerializer.Serialize(objCreate);
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 message.DateTime = DateTime.Now;
                 message.Description = e.Message;
@@ -77,8 +89,9 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                var listRole= (from x in _db.Roles.AsNoTracking()
-                               where x.IsDelete == isDelete select x).ToList();
+                var listRole = (from x in _db.Roles.AsNoTracking()
+                                where x.IsDelete == isDelete
+                                select x).ToList();
                 var result = Mapper.MapRole(listRole);
                 return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
 
@@ -90,17 +103,25 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CreateRole(CreateRoleViewModel input)
+        public Response CreateRole(CreateRoleViewModel input, string emailUser)
         {
             try
             {
                 Role role = new Role();
                 role = Mapper.MapCreateRole(input);
+                string jsonContent = JsonSerializer.Serialize(role);
                 _db.Roles.Add(role);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Thêm thành công !", Enums.TypeCRUD.Success.ToString());
-
+                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Role");
+                if (result)
+                {
+                    return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -109,16 +130,30 @@ namespace Travel.Data.Repositories
 
             }
         }
-        public Response UpdateRole(UpdateRoleViewModel input)
+        public Response UpdateRole(UpdateRoleViewModel input, string emailUser)
         {
             try
             {
+                if (input.NameRole.ToLower() == "admin")
+                {
+                    return Ultility.Responses("Không thể phân quyền Admin !", Enums.TypeCRUD.Validation.ToString());
+                }
                 Role role = new Role();
                 role = Mapper.MapUpdateRole(input);
+                string jsonContent = JsonSerializer.Serialize(role);
+
                 _db.Roles.Update(role);
                 _db.SaveChanges();
 
-                return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Role");
+                if (result)
+                {
+                    return Ultility.Responses("Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
 
             }
             catch (Exception e)
@@ -129,17 +164,31 @@ namespace Travel.Data.Repositories
 
         }
 
-        public Response RestoreRole(int idRole)
+
+
+
+        public Response RestoreRole(int idRole, string emailUser)
         {
             try
             {
                 var role = _db.Roles.Find(idRole);
                 if (role != null)
                 {
+                    string jsonContent = JsonSerializer.Serialize(role);
+
                     role.IsDelete = false;
                     _db.SaveChanges();
 
-                    return Ultility.Responses("Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
+                    bool result = _log.AddLog(content: jsonContent, type: "restore", emailCreator: emailUser, classContent: "Role");
+                    if (result)
+                    {
+                        return Ultility.Responses("Khôi phục thành công !", Enums.TypeCRUD.Success.ToString());
+
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
 
                 }
                 else
@@ -147,7 +196,7 @@ namespace Travel.Data.Repositories
                     return Ultility.Responses($"Không tìm thấy !", Enums.TypeCRUD.Warning.ToString());
 
                 }
-                
+
             }
             catch (Exception e)
             {
@@ -157,17 +206,32 @@ namespace Travel.Data.Repositories
 
         }
 
-        public Response DeleteRole(int idRole)
+        public Response DeleteRole(int idRole, string emailUser)
         {
             try
             {
-                var role = _db.Roles.Find(idRole);
-                if(role != null)
+                if (CheckIsAdmin(idRole))
                 {
+                    return Ultility.Responses("Không thể xóa Admin !", Enums.TypeCRUD.Validation.ToString());
+                }
+                var role = _db.Roles.Find(idRole);
+                if (role != null)
+                {
+                    string jsonContent = JsonSerializer.Serialize(role);
+
                     role.IsDelete = true;
                     _db.SaveChanges();
 
-                    return Ultility.Responses("Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+                    bool result = _log.AddLog(content: jsonContent, type: "delete", emailCreator: emailUser, classContent: "Role");
+                    if (result)
+                    {
+                        return Ultility.Responses("Xóa thành công !", Enums.TypeCRUD.Success.ToString());
+
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
 
                 }
                 else
@@ -236,20 +300,20 @@ namespace Travel.Data.Repositories
                 if (keywords.KwIdRole.Count > 0)
                 {
                     var queryListRole = (from x in _db.Roles.AsNoTracking()
-                               where x.IsDelete == keywords.IsDelete &&
-                                               x.NameRole.ToLower().Contains(keywords.KwName) &&
-                                               x.Description.ToLower().Contains(keywords.KwDescription)
-                               select x);
+                                         where x.IsDelete == keywords.IsDelete &&
+                                                         x.NameRole.ToLower().Contains(keywords.KwName) &&
+                                                         x.Description.ToLower().Contains(keywords.KwDescription)
+                                         select x);
                     totalResult = queryListRole.Count();
                     listRole = queryListRole.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                 }
                 else
                 {
                     var queryListRole = (from x in _db.Roles.AsNoTracking()
-                                where x.IsDelete == keywords.IsDelete &&
-                                               x.NameRole.ToLower().Contains(keywords.KwName) &&
-                                               x.Description.ToLower().Contains(keywords.KwDescription)
-                                select x);
+                                         where x.IsDelete == keywords.IsDelete &&
+                                                        x.NameRole.ToLower().Contains(keywords.KwName) &&
+                                                        x.Description.ToLower().Contains(keywords.KwDescription)
+                                         select x);
                     totalResult = queryListRole.Count();
                     listRole = queryListRole.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                 }
@@ -272,6 +336,43 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
 
 
+            }
+        }
+
+
+        private bool CheckIsAdmin(int idRole)
+        {
+            return (from x in _db.Roles.AsNoTracking()
+                    where x.IdRole == idRole
+                    select x).Count() > 0;
+        }
+        private Response CheckSameRole(string input)
+        {
+            try
+            {
+                string oriRoleInput = Ultility.removeVietnameseSign(input.ToLower().Replace(" ", ""));
+                var obj = _db.Roles.Where(delegate (Role role)
+                {
+                    if (Ultility.removeVietnameseSign(role.NameRole.ToLower().Replace(" ", "")).Contains(oriRoleInput))
+                    {
+                        return true;
+                    }
+                    if (Ultility.removeVietnameseSign(role.Description.ToLower().Replace(" ", "")).Contains(oriRoleInput))
+                    {
+                        return true;
+
+                    }
+                    return false;
+                });
+                if (obj.FirstOrDefault() != null)
+                {
+                    return Ultility.Responses("[" + input + "] này đã tồn tại !", Enums.TypeCRUD.Validation.ToString());
+                }
+                return res;
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
     }

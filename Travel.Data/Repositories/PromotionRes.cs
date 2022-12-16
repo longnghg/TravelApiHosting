@@ -24,7 +24,9 @@ namespace Travel.Data.Repositories
         private readonly TravelContext _db;
         private Notification message;
         private long today = 0;
-        private INotification _notification;
+        private INotification _notification; 
+        private readonly ILog _log;
+    
         private Employee GetCurrentUser(Guid IdUserModify)
         {
             return (from x in _db.Employees.AsNoTracking()
@@ -32,9 +34,9 @@ namespace Travel.Data.Repositories
                     select x).FirstOrDefault();
         }
    
-        public PromotionRes(TravelContext db, INotification notification)
+        public PromotionRes(TravelContext db, INotification notification, ILog log)
         {
-            _db = db;
+            _db = db; _log = log;
             message = new Notification();
             today = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
             _notification = notification;
@@ -88,7 +90,7 @@ namespace Travel.Data.Repositories
                 if (String.IsNullOrEmpty(typeAction))
                 {
                 }
-                var idUserModify = PrCommon.GetString("idUserModify", frmData);
+                var idUserModify = PrCommon.GetString("IdUserModify", frmData);
                 if (String.IsNullOrEmpty(idUserModify))
                 {
                 }
@@ -122,19 +124,23 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response GetsPromotion(bool isDelete)
+        public Response GetsPromotion(bool isDelete )
         {
             try
             {
-                var list = (from x in _db.Promotions.AsNoTracking()
+                var queryListPromotion = (from x in _db.Promotions.AsNoTracking()
                             where
                             x.IsDelete == isDelete &&
                             x.IsTempdata == false &&
                             x.Approve == Convert.ToInt16(Enums.ApproveStatus.Approved)
-
-                            select x).ToList();
+                            select x);
+                int totalResult = queryListPromotion.Count();
+                var list = queryListPromotion.ToList();
                 var result = Mapper.MapPromotion(list);
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
             }
             catch (Exception e)
             {
@@ -164,53 +170,69 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response GetsWaitingPromotion(Guid idUser)
+        public Response GetsWaitingPromotion(Guid idUser, int pageIndex, int pageSize)
         {
             try
             {
+                var totalResult = 0;
                 var userLogin = (from x in _db.Employees.AsNoTracking()
                                  where x.IdEmployee == idUser
                                  select x).FirstOrDefault();
                 var listWaiting = new List<Promotion>();
                 if (userLogin.RoleId == (int)Enums.TitleRole.Admin)
                 {
-                    listWaiting = (from x in _db.Promotions.AsNoTracking()
+                    var querylistWaiting = (from x in _db.Promotions.AsNoTracking()
                                    where x.Approve == Convert.ToInt16(ApproveStatus.Waiting) select x).ToList();
+                    totalResult = querylistWaiting.Count();
+                    listWaiting = querylistWaiting.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                 }
                 else
                 {
-                    listWaiting = (from x in _db.Promotions.AsNoTracking()
+                    var querylistWaiting = (from x in _db.Promotions.AsNoTracking()
                                    where x.IdUserModify == idUser
                                    && x.Approve == Convert.ToInt16(ApproveStatus.Waiting)
                                    select x).ToList();
+                    totalResult = querylistWaiting.Count();
+                    listWaiting = querylistWaiting.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                 }
 
                 var result = Mapper.MapPromotion(listWaiting);
-
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                var res =  Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = totalResult;
+                return res;
             }
             catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         } 
-         public Response CreatePromotion(CreatePromotionViewModel input)
+         public Response CreatePromotion(CreatePromotionViewModel input, string emailUser)
         {
             Promotion promotion
                         = Mapper.MapCreatePromotion(input);
             var user = GetCurrentUser(input.IdUserModify);
-            input.ModifyBy = user.NameEmployee;
+            promotion.ModifyBy = user.NameEmployee;
+            //promotion.IdUserModify = user.IdEmployee;
             promotion.TypeAction = "insert";
+            string jsonContent = JsonSerializer.Serialize(promotion);
             promotion.ModifyDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
             CreateDatabase(promotion);
 
-            var listRole = Ultility.ConvertListInt(new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) });
+            var listRole = new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) };
             _notification.CreateNotification(user.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), listRole, "");
-
-            return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+       
+            bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Promotion");
+            if (result)
+            {
+                return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+            }
+            else
+            {
+                return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+            }
         }
 
-        public Response DeletePromotion(int id, Guid idUser)
+        public Response DeletePromotion(int id, Guid idUser,string emailUser)
         {
             try
             {
@@ -221,6 +243,8 @@ namespace Travel.Data.Repositories
                 var userLogin = (from x in _db.Employees.AsNoTracking()
                                  where x.IdEmployee == idUser
                                  select x).FirstOrDefault();
+                string jsonContent = JsonSerializer.Serialize(promotion);
+
                 if (promotion.Approve == (int)ApproveStatus.Approved)
                 {
                     promotion.ModifyBy = userLogin.NameEmployee;
@@ -231,10 +255,19 @@ namespace Travel.Data.Repositories
                     promotion.IsDelete = true;
                     UpdateDatabase(promotion);
 
-                    var listRole = Ultility.ConvertListInt(new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) });
+                    var listRole = new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) };
                     _notification.CreateNotification(userLogin.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), listRole, "");
+                  
+                    bool result = _log.AddLog(content: jsonContent, type: "detele", emailCreator: emailUser, classContent: "Promotion");
+                    if (result)
+                    {
+                        return Ultility.Responses("Đã gửi yêu cầu xóa !", Enums.TypeCRUD.Success.ToString());
 
-                    return Ultility.Responses("Đã gửi yêu cầu xóa !", Enums.TypeCRUD.Success.ToString());
+                    }
+                    else
+                    {
+                        return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                    }
                 }
                 else
                 {
@@ -266,6 +299,7 @@ namespace Travel.Data.Repositories
                             #endregion
 
                             DeleteDatabase(promotionTemp);
+
                             return Ultility.Responses("Đã hủy yêu cầu chỉnh sửa !", Enums.TypeCRUD.Success.ToString());
                         }
                         else if (promotion.TypeAction == "restore")
@@ -302,7 +336,7 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdatePromotion(UpdatePromotionViewModel input)
+        public Response UpdatePromotion(UpdatePromotionViewModel input,string emailUser)
         {
             try
             {
@@ -334,14 +368,22 @@ namespace Travel.Data.Repositories
                 promotion.ToDate = input.ToDate;
                 promotion.FromDate = input.FromDate;
                 #endregion
-
+                string jsonContent = JsonSerializer.Serialize(promotion);
                 UpdateDatabase(promotion);
 
-                var listRole = Ultility.ConvertListInt(new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) });
+                var listRole = new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) };
                 _notification.CreateNotification(userLogin.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), listRole, "");
 
-                return Ultility.Responses("Đã gửi yêu cầu sửa !", Enums.TypeCRUD.Success.ToString());
+                bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Promotion");
+                if (result)
+                {
+                    return Ultility.Responses("Đã gửi yêu cầu sửa !", Enums.TypeCRUD.Success.ToString());
 
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
             }
             catch (Exception e)
             {
@@ -394,7 +436,7 @@ namespace Travel.Data.Repositories
                     UpdateDatabase(promotion);
 
                     var userModify = GetCurrentUser(promotion.IdUserModify);
-                    _notification.CreateNotification(userModify.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), userModify.RoleId.ToString(), "Thành công");
+                    _notification.CreateNotification(userModify.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), new int[] { userModify.RoleId }, "Thành công");
                     return Ultility.Responses("Duyệt thành công !", Enums.TypeCRUD.Success.ToString());
                 }
                 else
@@ -462,7 +504,7 @@ namespace Travel.Data.Repositories
                     UpdateDatabase(promotion);
 
                     var userModify = GetCurrentUser(promotion.IdUserModify);
-                    _notification.CreateNotification(userModify.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), userModify.RoleId.ToString(), "Từ chối");
+                    _notification.CreateNotification(userModify.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), new int[] { userModify.RoleId }, "Từ chối");
 
                     return Ultility.Responses("Từ chối thành công !", Enums.TypeCRUD.Success.ToString());
                 }
@@ -477,7 +519,7 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response RestorePromotion(int id, Guid idUser)
+        public Response RestorePromotion(int id, Guid idUser ,string emailUser)
         {
             try
             {
@@ -488,6 +530,7 @@ namespace Travel.Data.Repositories
                 var userLogin = (from x in _db.Employees.AsNoTracking()
                                  where x.IdEmployee == idUser
                                  select x).FirstOrDefault();
+                string jsonContent = JsonSerializer.Serialize(promotion);
                 if (promotion.Approve == (int)ApproveStatus.Approved)
                 {
                     promotion.ModifyBy = userLogin.NameEmployee;
@@ -500,10 +543,19 @@ namespace Travel.Data.Repositories
                 }
                 UpdateDatabase(promotion);
 
-                var listRole = Ultility.ConvertListInt(new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) });
+                var listRole = new int[] { Convert.ToInt16(Enums.TitleRole.Admin), Convert.ToInt16(Enums.TitleRole.LocalManager) };
                 _notification.CreateNotification(userLogin.IdEmployee, Convert.ToInt16(Enums.TypeNotification.Promotion), promotion.Value.ToString(), listRole, "");
+                bool result = _log.AddLog(content: jsonContent, type: "resore", emailCreator: emailUser, classContent: "Promotion");
+                if (result)
+                {
+                    return Ultility.Responses("Đã gửi yêu cầu khôi phục !", Enums.TypeCRUD.Success.ToString());
 
-                return Ultility.Responses("Đã gửi yêu cầu khôi phục !", Enums.TypeCRUD.Success.ToString());
+
+                }
+                else
+                {
+                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
+                }
 
             }
             catch (Exception e)
@@ -551,6 +603,162 @@ namespace Travel.Data.Repositories
 
 
 
+        }
+   
+        public Response SearchPromotion(JObject frmData)
+        {
+            try
+            {
+                var totalResult = 0;
+                Keywords keywords = new Keywords();
+                var pageSize = PrCommon.GetString("pageSize", frmData) == null ? 10 : Convert.ToInt16(PrCommon.GetString("pageSize", frmData));
+                var pageIndex = PrCommon.GetString("pageIndex", frmData) == null ? 1 : Convert.ToInt16(PrCommon.GetString("pageIndex", frmData));
+
+                var isDelete = PrCommon.GetString("isDelete", frmData);
+                if (!String.IsNullOrEmpty(isDelete))
+                {
+                    keywords.IsDelete = Boolean.Parse(isDelete);
+                }
+
+                var kwValue = PrCommon.GetString("value", frmData);
+                if (!String.IsNullOrEmpty(kwValue))
+                {
+                    keywords.KwValue = int.Parse(kwValue);
+                }
+                else
+                {
+                    keywords.KwValue = 0;
+                }
+
+                var kwFromDate = PrCommon.GetString("fromDate", frmData);
+                if (!String.IsNullOrEmpty(kwFromDate))
+                {
+                    keywords.KwFromDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Parse(kwFromDate));
+                }
+                else
+                {
+                    keywords.KwFromDate = 0;
+                }
+
+                var kwToDate = PrCommon.GetString("toDate", frmData);
+                if (!String.IsNullOrEmpty(kwToDate))
+                {
+                    keywords.KwToDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Parse(kwToDate).AddDays(1).AddSeconds(-1));
+                }
+                else
+                {
+                    keywords.KwToDate = 0;
+                }
+
+                var listPromotion = new List<Promotion>();
+
+                if(keywords.KwFromDate > 0 || keywords.KwToDate > 0)
+                {
+                    if(keywords.KwValue > 0)
+                    {
+                        if (keywords.KwFromDate > 0 && keywords.KwToDate > 0)
+                        {
+                            var querylistPromo = (from p in _db.Promotions
+                                             where p.IsDelete == keywords.IsDelete &&
+                                                   p.FromDate >= keywords.KwFromDate &&
+                                                   p.ToDate <= keywords.KwToDate &&
+                                                   p.Value == keywords.KwValue
+                                             select p).ToList();
+                            totalResult = querylistPromo.Count();
+                            listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwFromDate == 0 && keywords.KwToDate > 0)
+                        {
+                            var querylistPromo = (from p in _db.Promotions
+                                             where p.IsDelete == keywords.IsDelete &&
+                                                   p.ToDate <= keywords.KwToDate &&
+                                                   p.Value == keywords.KwValue
+                                             select p).ToList();
+                            totalResult = querylistPromo.Count();
+                            listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwFromDate > 0 && keywords.KwToDate == 0)
+                        {
+                            var querylistPromo = (from p in _db.Promotions
+                                             where p.IsDelete == keywords.IsDelete &&
+                                                   p.FromDate >= keywords.KwFromDate &&
+                                                   p.Value == keywords.KwValue
+                                             select p).ToList();
+                            totalResult = querylistPromo.Count();
+                            listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                    }
+                    else
+                    {
+                        if (keywords.KwFromDate > 0 && keywords.KwToDate > 0)
+                        {
+                            var querylistPromo = (from p in _db.Promotions
+                                             where p.IsDelete == keywords.IsDelete &&
+                                                   p.FromDate >= keywords.KwFromDate &&
+                                                   p.ToDate <= keywords.KwToDate 
+                                                  select p).ToList();
+                            totalResult = querylistPromo.Count();
+                            listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwFromDate == 0 && keywords.KwToDate > 0)
+                        {
+                            var querylistPromo = (from p in _db.Promotions
+                                             where   p.IsDelete == keywords.IsDelete &&
+                                                     p.ToDate <= keywords.KwToDate 
+                                             select p).ToList();
+                            totalResult = querylistPromo.Count();
+                            listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwFromDate > 0 && keywords.KwToDate == 0)
+                        {
+                            var querylistPromo = (from p in _db.Promotions
+                                             where  p.IsDelete == keywords.IsDelete &&
+                                                    p.FromDate >= keywords.KwFromDate 
+                                                  select p).ToList();
+                            totalResult = querylistPromo.Count();
+                            listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                    }
+                }
+                else
+                {
+                    if(keywords.KwValue > 0)
+                    {
+                        var querylistPromo = (from p in _db.Promotions
+                                         where p.IsDelete == keywords.IsDelete &&
+                                                p.Value == keywords.KwValue 
+                                              select p).ToList();
+                        totalResult = querylistPromo.Count();
+                        listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                    }
+                    else
+                    {
+                        var querylistPromo = (from p in _db.Promotions
+                                              where p.IsDelete == keywords.IsDelete 
+                                         select p).ToList();
+                        totalResult = querylistPromo.Count();
+                        listPromotion = querylistPromo.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                    }
+                    
+                }
+
+
+                var result = Mapper.MapPromotion(listPromotion);
+                if (result.Count() > 0)
+                {
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    res.TotalResult = totalResult;
+                    return res;
+                }
+                else
+                {
+                    return Ultility.Responses($"Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString());
+                }
+            }
+            catch(Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
         }
     }
 }

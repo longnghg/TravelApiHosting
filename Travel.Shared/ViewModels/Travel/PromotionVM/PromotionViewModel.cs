@@ -18,6 +18,7 @@ namespace Travel.Shared.ViewModels.Travel.PromotionVM
         private int approve;
         private bool isDelete;
         private string typeAction;
+        private string idUserModify;
         public int IdPromotion { get => idPromotion; set => idPromotion = value; }
         public int Value { get => value; set => this.value = value; }
         public long ToDate { get => toDate; set => toDate = value; }
@@ -27,5 +28,6 @@ namespace Travel.Shared.ViewModels.Travel.PromotionVM
         public int Approve { get => approve; set => approve = value; }
         public bool IsDelete { get => isDelete; set => isDelete = value; }
         public string TypeAction { get => typeAction; set => typeAction = value; }
+        public string IdUserModify { get => idUserModify; set => idUserModify = value; }
     }
 }

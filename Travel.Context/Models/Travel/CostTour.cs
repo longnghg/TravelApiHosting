@@ -40,5 +40,11 @@ namespace Travel.Context.Models
         public Place Place { get; set; }
         public Hotel Hotel { get; set; }
         public Restaurant Restaurant { get; set; }
+
+
+        public int Approve { get; set; }
+        public string TypeAction { get; set; }
+        public bool IsTempData { get; set; }
+
     }
 }

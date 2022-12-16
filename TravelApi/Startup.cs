@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +42,10 @@ namespace TravelApi
             services.AddSignalR(e => {
                 e.EnableDetailedErrors = true;
                 e.MaximumReceiveMessageSize = 102400000;
-            }); services.AddCors(options => {
+            });
+            services
+    .AddSingleton<IUserIdProvider, ConfigUserIdProvider>();
+            services.AddCors(options => {
                 options.AddPolicy("CORSPolicy", builder => builder.AllowAnyMethod().AllowAnyHeader().AllowCredentials().SetIsOriginAllowed((hosts) => true));
             });
             services.AddControllers();
@@ -49,6 +53,7 @@ namespace TravelApi
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TravelApi", Version = "v1" });
             });
+            services.AddMemoryCache();
 
             services.AddDatabase(Configuration)
                 .AddRepositories();
@@ -75,8 +80,9 @@ namespace TravelApi
                     ValidAudience = Configuration["Token:Audience"],
                     ValidIssuer = Configuration["Token:Issuer"],
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromMinutes(Convert.ToInt16(Configuration["Token:TimeExpired"])),
-                    //ClockSkew = TimeSpan.FromMinutes(525600),
+                    ClockSkew = TimeSpan.Zero,
+                    //ClockSkew = TimeSpan.FromMinutes(Convert.ToInt16(Configuration["Token:TimeExpired"])),
+                    //ClockSkew = TimeSpan.FromSeconds(2220),
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:Key"])),
              
@@ -97,21 +103,6 @@ namespace TravelApi
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             // add automapper
             Travel.Shared.Ultilities.Mapper.RegisterMappings();
         }
@@ -119,11 +110,12 @@ namespace TravelApi
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHttpContextAccessor httpContextAccessor)
         {
-           
+            if (env.IsDevelopment())
+            {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "TravelApi v1"));
-            
+            }
 
             app.UseHttpsRedirection();
 

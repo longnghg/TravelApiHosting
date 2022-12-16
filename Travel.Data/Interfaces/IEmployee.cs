@@ -16,13 +16,18 @@ namespace Travel.Data.Interfaces
         string CheckBeforeSave(IFormCollection frmdata, IFormFile file, ref Notification _message, bool isUpdate);
         Response GetsEmployee(bool isDelete);
         Response GetEmployee(Guid idEmployee);
-        Response UpdateEmployee(UpdateEmployeeViewModel input);
-        Response CreateEmployee(CreateEmployeeViewModel input);
+        Response UpdateEmployee(UpdateEmployeeViewModel input, string emailUser);
+        Response CreateEmployee(CreateEmployeeViewModel input, string emailUser);
         Response SearchEmployee(JObject frmData);
-        Response RestoreEmployee(Guid idEmployee);
-        Response DeleteEmployee(Guid idEmployee);
+        Response RestoreEmployee(Guid idEmployee, string emailUser);
+        Response DeleteEmployee(Guid idEmployee, string emailUser);
         Response StatisticEmployee();
 
         Task<Response> SendOTP(string email);
+        Task<Response> SendFile(string email);
+
+
+        Response GetsSelectBoxEmployee(long fromDate, long toDate);
+        Response GetsSelectBoxEmployeeUpdate(long fromDate, long toDate, string idSchedule);
     }
 }

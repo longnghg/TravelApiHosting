@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Travel.Context.Models;
 using Travel.Context.Models.Notification;
 using Travel.Context.Models.Travel;
 using Travel.Data.Interfaces;
@@ -37,6 +38,7 @@ namespace Travel.Data.Repositories
         public async Task<bool> SaveReportTourBookingEveryDay(DateTime dateInput)
         {
             var dateTimeYesterday = DateTime.Now.AddDays(-1);
+            var dateTimeNow = dateTimeYesterday.AddDays(1);
             var day = dateTimeYesterday.Day;
             var month = dateTimeYesterday.Month;
             var year = dateTimeYesterday.Year;
@@ -47,8 +49,9 @@ namespace Travel.Data.Repositories
             using var transaction = _dbNotyf.Database.BeginTransaction();
             try
             {
+                var dateSaveMax = await _dbNotyf.ReportTourBooking.OrderByDescending(x => x.DateSave).FirstOrDefaultAsync();
                 await transaction.CreateSavepointAsync("BeforeSave");
-                if (input == unixYesterday)
+                if (dateSaveMax == null || dateSaveMax.DateSave < input)
                 {
                     if (!await CheckReportByDateIsExist(unixYesterday))
                     {
@@ -58,7 +61,7 @@ namespace Travel.Data.Repositories
                                                        where tbk.Status == (int)Enums.StatusBooking.Finished
                                                        && (s.ReturnDate >= unixYesterday && s.ReturnDate <= unixEndOfYesterday)
                                                        select tbk).ToListAsync() ;
-
+            
                         var listGroupingTourbooking = listTourBookingFinished.GroupBy(x => x.ScheduleId);
                         foreach (var item in listGroupingTourbooking)
                         {
@@ -70,6 +73,10 @@ namespace Travel.Data.Repositories
                             var costTour = await (from s in _db.Schedules.AsNoTracking()
                                                   where s.IdSchedule == item.Key
                                                   select s.TotalCostTour).FirstOrDefaultAsync();
+                            // nếu window service lỗi, thì coi hàm này
+                            var sumCancelTour = await (from s in _db.TourBookings.AsNoTracking()
+                                                       where s.ScheduleId == item.Key
+                                                       select s).CountAsync();
                             long sumCostTour = (int)costTour * item.Count();
                             var sumNormalPrice = (long)item.Sum(x => x.TotalPrice);
                             var sumNormalPricePromotion = (long)item.Sum(x => x.TotalPricePromotion);
@@ -81,11 +88,10 @@ namespace Travel.Data.Repositories
                                 NameTour = schedule.NameTour,
                                 QuantityBooked = item.Count(),
                                 TotalRevenue = (sumNormalPrice + sumNormalPricePromotion),
-                                TotalCost = sumCostTour
+                                TotalCost = sumCostTour,
+                                QuantityCancel = sumCancelTour
                             };
                             CreateDatabase(obj);
-
-
                         }
 
                         await SaveChangeAsync();
@@ -129,7 +135,6 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-
         public Response StatisticTourBookingInThisWeek(long fromDate,long toDate)
         {
             try
@@ -250,11 +255,63 @@ namespace Travel.Data.Repositories
                 var firstDateInYearUnix = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(firstDateInYear);
                 var lastDateInYearUnix = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(lastDateInYear);
 
-                  var lsReportTourBooking = StatisticTourBookingFromDateToDate(firstDateInYearUnix, lastDateInYearUnix);
+                  var lsReportTourBooking = StatisticTourBookingFromDateToDate(firstDateInYearUnix, lastDateInYearUnix).Content;
                 return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), lsReportTourBooking);
 
             }
 
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response GetStatisticTourbookingByMonth(int Month,int year)
+        {
+            try
+            {
+                var start = DateTime.Parse($"{year}/{Month}/1");
+                var end = start.AddMonths(1).AddDays(-1);
+
+                var startUnix = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(start);
+                var endUnix = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(end);
+                return  StatisticTourBookingFromDateToDate(startUnix, endUnix);
+    
+            }
+            catch (Exception e)
+            {
+
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response GetStatisticTotalTourBooking(long fromDate, long toDate)
+        {
+            try
+            {
+                var queryTotalTourBooking = (from x in _db.TourBookings.AsNoTracking()
+                                        where  x.DateBooking >= fromDate
+                                        && x.DateBooking <= toDate
+                                        select x);
+                var CountTotalTotalPaidTourBooking = (from x in queryTotalTourBooking
+                                                        where x.Status == Convert.ToInt16(Enums.StatusBooking.Paid)
+                                                        select x).Count();
+                var CountTotalTotalFinishedTourBooking = (from x in queryTotalTourBooking
+                                                      where x.Status == Convert.ToInt16(Enums.StatusBooking.Finished)
+                                                      select x).Count();
+                var CountTotalTotalCancelTourBooking = (from x in queryTotalTourBooking
+                                                   where x.Status == Convert.ToInt16(Enums.StatusBooking.Cancel)
+                                                   select x).Count();
+                var CountTotal = queryTotalTourBooking.Count();
+                var result = new 
+                {
+                    TotalPaid = CountTotalTotalPaidTourBooking,
+                    TotalFinished = CountTotalTotalFinishedTourBooking,
+                    TotalCancel = CountTotalTotalCancelTourBooking,
+                    Total = CountTotal
+                };
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+            }
             catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);

@@ -13,9 +13,9 @@ namespace Travel.Data.Interfaces
     public interface ICostTour
     {
         string CheckBeforSave(JObject frmData, ref Notification _message, bool isUpdate = false);
-        Response Create(CreateCostViewModel input);
+        Response Create(CreateCostViewModel input, string emailUser);
         Response Get();
         Response GetCostByIdSchedule(string IdSchedule);
-        Response Update(UpdateCostViewModel input);
+        Response Update(UpdateCostViewModel input, string emailUser);
     }
 }

@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -22,10 +23,16 @@ namespace TravelApi.Controllers
         private Notification message;
         private Response res;
 
-        public RoleController(IRole _role)
+        public RoleController(IRole _role ,ILog log)
         {
             role = _role;
             res = new Response();
+        }
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
         }
 
         [HttpGet]
@@ -57,8 +64,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateRoleViewModel>(result);
-                res = role.CreateRole(createObj);
-               
+
+                var emailUser =GetEmailUserLogin().Value;
+                res = role.CreateRole(createObj, emailUser);
             }
             else
             {
@@ -79,7 +87,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateRoleViewModel>(result);
-                res = role.UpdateRole(updateObj);
+                var emailUser = GetEmailUserLogin().Value;
+                res = role.UpdateRole(updateObj, emailUser);
             }
             else
             {
@@ -94,8 +103,9 @@ namespace TravelApi.Controllers
         [Route("restore-role")]
         public object RestoreRole(int idRole)
         {
-            res = role.RestoreRole(idRole);
-             
+       
+            var emailUser = GetEmailUserLogin().Value;
+            res = role.RestoreRole(idRole, emailUser);
             return Ok(res);
         }
         [HttpDelete]
@@ -103,8 +113,9 @@ namespace TravelApi.Controllers
         [Route("delete-role")]
         public object DeleteRole(int idRole)
         {
-            res = role.DeleteRole(idRole);
-             
+   
+            var emailUser = GetEmailUserLogin().Value;
+            res = role.DeleteRole(idRole, emailUser);
             return Ok(res);
         }
     }

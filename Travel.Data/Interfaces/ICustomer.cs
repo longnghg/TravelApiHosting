@@ -14,6 +14,7 @@ namespace Travel.Data.Interfaces
     {
         string CheckBeforeSave(JObject frmdata, ref Notification _message, bool isUpdate);
         Response Gets();
+
         Response Create(CreateCustomerViewModel input);
         Response GetsHistory(Guid idCustomer);
         Task<Response> SendOTP(string email);
@@ -21,7 +22,8 @@ namespace Travel.Data.Interfaces
          Task<Response> UpdateCustomer(UpdateCustomerViewModel input);
         Task<Response> CustomerSendRate(string idTour, int rating);
 
-        Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point);
-
+        Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point );
+        Task<Response> UpdateBlockCustomer(Guid idCustomer, bool isBlock);
+        Response Search(JObject frmData);
     }
 }

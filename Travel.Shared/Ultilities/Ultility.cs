@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,7 +24,13 @@ namespace Travel.Shared.Ultilities
     {
         private static Notification message = new Notification();
         private static Image image = new Image();
-
+        private static List<Image> imageList = new List<Image>();
+        private const string CLOUD_NAME = "ddv2idi9d";
+        private const string API_KEY = "687389283419199";
+        private const string API_SECRET = "BOCNwD1_s-DwP67WIkwNkuURBtE";
+        private static Cloudinary cloudinary;
+        private static string publicId;
+        private static string link;
         public static List<T> Shuffle<T>(this List<T> list, Random rnd)
         {
             for (var i = list.Count; i > 0; i--)
@@ -222,7 +230,7 @@ namespace Travel.Shared.Ultilities
                     //result = string.Format("{0}N{1}Đ", day + 1, day);
                 }
             }
-            return result.Substring(0,1);
+            return result.Substring(0, 1);
         }
         public static DateTime GetDateZeroTime(DateTime date)
         {
@@ -243,6 +251,82 @@ namespace Travel.Shared.Ultilities
 
         }
         #endregion
+
+
+        public static void uploadQR(Stream stream, string name, string folderPath)
+        {
+            try
+            {
+                var uploadParams = new ImageUploadParams()
+                {
+                    Folder = folderPath,
+                    File = new FileDescription(name,stream),
+                    UseFilename = true
+                };
+
+                var uploadResult = cloudinary.Upload(uploadParams);
+                publicId = $"lia/Folder/{uploadResult.PublicId}";
+                link = uploadResult.Uri.ToString();
+            }
+            catch (Exception e)
+            {
+
+                Ultility.Responses("lỗi khi thêm vào cloud !", Enums.TypeCRUD.Success.ToString());
+            }
+        }
+
+        public static string UploadQR(Stream stream, string idService, ref Notification _message)
+        {
+            try
+            {
+                var d = DateTime.Now;
+                string dateTimeString = $"{d.Year}{d.Month}{d.Day}{d.Hour}{d.Minute}{d.Second}";
+                var nameFile = $"QR{dateTimeString}";
+                var folderPath = "/Upload/QR";
+
+                #region upload cloud
+                //up lên cloud
+                Account account = new Account(CLOUD_NAME, API_KEY, API_SECRET);
+                cloudinary = new Cloudinary(account);
+                uploadQR(stream, nameFile, folderPath);
+                #endregion
+                return link;
+            }
+            catch (Exception e)
+            {
+                message.Messenge = "Có lỗi xảy ra khi lưu file !";
+                message.Type = "Error";
+                message.Description = e.Message;
+                _message = message;
+
+                return null;
+            }
+        }
+
+
+        public static void uploadImage(string filePath, string folderPath)
+        {
+            try
+            {
+                var uploadParams = new ImageUploadParams()
+                {
+                    Folder = folderPath,
+                    File = new FileDescription(filePath),
+                    UseFilename = true
+                };
+
+                var uploadResult = cloudinary.Upload(uploadParams);
+                publicId = $"lia/Folder/{uploadResult.PublicId}";
+                link = uploadResult.Uri.ToString();
+            }
+            catch (Exception e)
+            {
+
+                Ultility.Responses("lỗi khi thêm vào cloud !", Enums.TypeCRUD.Success.ToString());
+            }
+        }
+
+
 
 
 
@@ -270,8 +354,6 @@ namespace Travel.Shared.Ultilities
                 {
                     Directory.CreateDirectory(pathId);
                 }
-
-
                 var date = Ultility.FormatDateToInt(DateTime.Now, "DDMMYYYY").ToString();
 
                 string pathDate = Path.Combine(pathId, date);
@@ -281,9 +363,7 @@ namespace Travel.Shared.Ultilities
                 }
                 //get file extension
                 //string[] str = file.FileName.Split('.');
-
                 string fileName = "";
-
                 if (orderby > 0)
                 {
                     fileName = orderby.ToString() + "_" + Ultility.FormatDateToInt(DateTime.Now, "DDMMYYYYHHMMSS").ToString() + Path.GetExtension(file.FileName);
@@ -292,9 +372,8 @@ namespace Travel.Shared.Ultilities
                 {
                     fileName = Ultility.FormatDateToInt(DateTime.Now, "DDMMYYYYHHMMSS").ToString() + Path.GetExtension(file.FileName);
                 }
-
                 string fullpath = Path.Combine(pathDate, fileName);
-
+                string folderPath = "/Uploads/" + type + "/" + idService + "/" + date;
                 string serverPath = "/Uploads/" + type + "/" + idService + "/" + date + "/" + fileName;
                 if (Directory.Exists(fullpath))
                 {
@@ -305,13 +384,19 @@ namespace Travel.Shared.Ultilities
                 {
                     file.CopyTo(stream);
                 }
+                //up lên cloud
+                Account account = new Account(CLOUD_NAME, API_KEY, API_SECRET);
+                cloudinary = new Cloudinary(account);
+                string imagePath = Path.GetFullPath(fullpath);
+                uploadImage(imagePath, folderPath);
 
                 image.IdImage = Guid.NewGuid();
                 image.NameImage = fileName;
-                image.Extension = Path.GetExtension(file.FileName).Replace(".","");
+                image.Extension = Path.GetExtension(file.FileName).Replace(".", "");
                 image.IdService = idService;
                 image.Size = file.Length;
-                image.FilePath = serverPath;
+                image.FilePath = link;
+                image.IsDelete = false;
                 return image;
             }
             catch (Exception e)
@@ -324,13 +409,216 @@ namespace Travel.Shared.Ultilities
                 return image;
             }
         }
+
+        public static List<Image> WriteFiles(ICollection<IFormFile> files, string type, string idService, ref Notification _message, int orderby = 0)
+        {
+            try
+            {
+                imageList = new List<Image>();
+                if (files.Count > 0)
+                {
+                    foreach (var file in files)
+                    {
+                        Image imageDetail = new Image();
+
+                        var folder = Directory.GetCurrentDirectory() + @"\wwwroot";
+                        string path = Path.Combine(folder, "Uploads");
+                        if (!Directory.Exists(path))
+                        {
+                            Directory.CreateDirectory(path);
+                        }
+
+                        string pathType = Path.Combine(path, type);
+
+                        if (!Directory.Exists(pathType))
+                        {
+                            Directory.CreateDirectory(pathType);
+                        }
+
+                        string pathId = Path.Combine(pathType, idService.ToString());
+
+                        if (!Directory.Exists(pathId))
+                        {
+                            Directory.CreateDirectory(pathId);
+                        }
+                        var date = Ultility.FormatDateToInt(DateTime.Now, "DDMMYYYY").ToString();
+
+                        string pathDate = Path.Combine(pathId, date);
+                        if (!Directory.Exists(pathDate))
+                        {
+                            Directory.CreateDirectory(pathDate);
+                        }
+                        //get file extension
+                        //string[] str = file.FileName.Split('.');
+                        string fileName = "";
+                        if (orderby > 0)
+                        {
+                            fileName = orderby.ToString() + "_" + Ultility.FormatDateToInt(DateTime.Now, "DDMMYYYYHHMMSS").ToString() + Path.GetExtension(file.FileName);
+                        }
+                        else
+                        {
+                            fileName = Ultility.FormatDateToInt(DateTime.Now, "DDMMYYYYHHMMSS").ToString() + Path.GetExtension(file.FileName);
+                        }
+                        string fullpath = Path.Combine(pathDate, fileName);
+                        string folderPath = "/Uploads/" + type + "/" + idService + "/" + date;
+                        string serverPath = "/Uploads/" + type + "/" + idService + "/" + date + "/" + fileName;
+                        if (Directory.Exists(fullpath))
+                        {
+                            System.IO.File.Delete(fullpath);
+
+                        }
+                        using (var stream = new FileStream(fullpath, FileMode.Create))
+                        {
+                            file.CopyTo(stream);
+                        }
+
+                        Account account = new Account(CLOUD_NAME, API_KEY, API_SECRET);
+                        cloudinary = new Cloudinary(account);
+                        string imagePath = Path.GetFullPath(fullpath);
+                        uploadImage(imagePath, folderPath);
+
+                        imageDetail.IdImage = Guid.NewGuid();
+                        imageDetail.NameImage = fileName;
+                        imageDetail.Extension = Path.GetExtension(file.FileName).Replace(".", "");
+                        imageDetail.IdService = idService;
+                        imageDetail.Size = file.Length;
+                        imageDetail.FilePath = link;
+                        imageDetail.IsDelete = false;
+                        imageList.Add(imageDetail);
+                    }
+                }
+                return imageList;
+            }
+            catch (Exception e)
+            {
+                message.Messenge = "Có lỗi xảy ra khi lưu file !";
+                message.Type = "Error";
+                message.Description = e.Message;
+                _message = message;
+
+                return imageList;
+            }
+        }
+
+        public static string getHtmlBookingSuccess(string pincode,string fullname, string phone, string totalamount, string qr, string statuspayment)
+        {
+            try
+            {
+                string body = @"<!DOCTYPE html PUBLIC ' -//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'><html xmlns='http://www.w3.org/1999/xhtml'><head><meta http-equiv='Content-Type' content='text/html; charset=utf-8' /> <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' /> <title>Optional Tour</title><style type='text/css'> body {font-family: 'Roboto', sans-serif;font-size: 14px;min-width: 760px;}.f-left {float: left;}.mg-left5 {margin-left: 5px;}.td-left { background: #f4f5f6; border-bottom: 1px solid #fff;margin: 0; padding: 5px 10px;text-align: right;vertical-align: middle;width: 150px;}.td-right {border-bottom: 1px solid #f4f5f6;font-size: 14px;line-height: 20px;margin: 0;padding: 5px 10px;vertical-align: middle;}.chitietbooking table, .thongtinlienlac table {border: 1px solid #f4f5f6;border-collapse: collapse;margin: 0;padding: 0;width: 100%;}</style></head><body><div class='container'style='    background: linear-gradient(-180deg, #1ae28a, #209077 150%);margin:auto;border: 1px solid #505050;  border-radius: 10px;     width: 60%;  height: 500px;'><table cellpadding='0' cellspacing='0' width='760' border='0'style='margin: auto;top: 10px;' ><tr><td colspan='2'><table width='100%'><tr><td style='width: 100px;'><a href='https://travel.com.vn/Content/Theme/images/logo.png'><img src='https://res.cloudinary.com/ddv2idi9d/image/upload/v1670731543/Upload/Logo/Logoaiu_ntvora.png' width='208px' height='70px' alt='logo' /></a></td><td align='right'><div style='text-align: right;margin-right: 2.5rem;'><a href='tel:19001839'><span style='color: #c50000; font-weight: bold; font-size: 20px;'>1900 1839</span></a><br /><span style='color: #333; font-size: 11px;'>cước gọi 1000đ/phút</span></div></td></tr></table></td></tr><tr><td colspan='2'><div style='text-align: center; font-weight: bold; text-transform: uppercase; color: #000; font-size: 24px; padding-top: 20px; padding-bottom: 20px;border-bottom: 1px dotted #ccc; border-top: 1px dotted #ccc; margin-bottom: 30px;'>BOOKING THANH TOÁN</div></td></tr><tr><td colspan='2'><div style='font-weight: bold; text-transform: uppercase; color: #c50000; margin-bottom: 10px; font-size: 16px'>A. THÔNG TIN TOUR BOOKING :</div><div class='col-sm-3 ' style='position: relative' ><img src='{qr}' width='20%' ><div class='col-sm-5' style='position: absolute; width: 80%;'><table width='100%' style='font-size: 18px;margin-left: 170px;margin-bottom: 20px;margin-top: -135px;position: absolute'><tr><td style='font-weight:bold'>Mã Pincode:</td><td colspan='3'><a style='color: black;margin-right: 80px;'></a></td></tr><tr><td style='font-weight:bold'>Họ tên:</td><td>{fullname}</td></tr><tr><td style='font-weight:bold'>Số điện thoại:</td><td>{phone}</td></tr><tr><td style='font-weight:bold'>Tình trạng thanh toán:</td><td>{statuspayment}</td></tr><tr><td style='font-weight:bold'>Tổng tiền thanh toán:</td><td>{totalamount}</td></tr></table></div></div><hr></td></tr><tr><td colspan='2'>&nbsp;</td></tr><tr><td colspan='2' style='font-weight:bold;font-style: italic;text-align:center;color: #c50000'><div style='margin-bottom: 15px;color: rgb(201, 5, 5);'>Đây là email tự động Quý khách vui lòng không phản hồi vào email này</div></td></tr><tr><td colspan='2' style='height: 30px; text-align: center; padding-top: 15px; padding-bottom: 15px; color: #fff;'><div style='margin-bottom: 5px;'> 19 To ky, District 12, Ho Chi Minh City, Viet Nam</div><div><span>Điện thoại:</span> (+84 28) 38 22 8898 - <span>Fax:</span> (+84 28) 3829 9142 - <span>Email:</span> <a href='mailto:info@travelRover.com' style='color: white;'>info@travelRover.com</a></div></td></tr></table></div></body></html>";
+                body = body.Replace("{pincode}", pincode);
+                body = body.Replace("{fullname}", fullname);
+                body =  body.Replace("{phone}", phone);
+                body =  body.Replace("{statuspayment}", statuspayment);
+                body =  body.Replace("{totalamount}", totalamount);
+                body =  body.Replace("{qr}", qr);
+                return (body);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+        public static string getHtmtFile()
+        {
+            try
+            {
+
+                string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'><h1>EMAIL FROM TRAVELROVER</h1><h4>TravelRover Xin chào quý khách. Cảm ơn đã sử dụng dịch vụ của chúng tôi</h4><h5></h5><span>:</span>  <span style='font-size:32px ;' ><b></b></span></div>";
+
+                return (body);
+
+
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+        public static void sendEmailUploadFile(string htmlString, string toEmail, string mailSubject, string emailSend, string keySecurity)
+        {
+            try
+            {
+                using (var message = new MailMessage())
+                {
+                    message.From = new MailAddress(emailSend);
+                    message.To.Add(new MailAddress(toEmail));
+                    message.Subject = mailSubject;
+                    message.IsBodyHtml = true; //to make message body as html  
+                    message.Body = htmlString;
+                    var attachment = new System.Net.Mail.Attachment("d:/Travel.txt");
+                    message.Attachments.Add(attachment);
+                    using (SmtpClient smtp = new SmtpClient())
+                    {
+                        smtp.Port = 587;
+                        smtp.Host = "smtp.gmail.com"; //for gmail host  
+                        smtp.EnableSsl = true;
+                        smtp.UseDefaultCredentials = false;
+                        smtp.Credentials = new NetworkCredential("professional8778781@gmail.com", keySecurity);
+                        smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+                        smtp.Send(message);
+                    }
+
+                }
+
+
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+        public static string getHtmlBookingSuccess(string content, string subjectBody, string textHead)
+        {
+            try
+            {
+
+                string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'><h1>EMAIL FROM TRAVELROVER</h1><h4>TravelRover. Xin chào quý khách. Cảm ơn đã sử dụng dịch vụ của chúng tôi</h4><h5>{subjectBody}</h5><hr><span>{textHead}:</span> <span style='font-size:32px ;' ><b>{content}</b></span></div>";
+                return (body);
+
+
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public static string getHtmlBookingCancel(string subjectBody, string textHead)
+        {
+            try
+            {
+                string body = $"{subjectBody} {textHead}";
+                return (body);
+
+
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public static string getHtmlBookingTicket(string content, string subjectBody, string textHead)
+        {
+            try
+            {
+
+                string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'><h1>EMAIL FROM TRAVELROVER</h1><h4>TravelRover. Xin chào quý khách. Cảm ơn đã sử dụng dịch vụ của chúng tôi</h4><h5>{subjectBody}</h5><hr><span>{textHead}:</span> <span style='font-size:32px ;' ><b>{content}</b></span></div>";
+                return (body);
+
+
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
         public static string getHtml(string content, string subjectBody, string textHead)
         {
             try
             {
 
                 string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'><h1>EMAIL FROM TRAVELROVER</h1><h4>TravelRover. Xin chào quý khách. Cảm ơn đã sử dụng dịch vụ của chúng tôi</h4><h5>{subjectBody}</h5><hr><span>{textHead}:</span> <span style='font-size:32px ;' ><b>{content}</b></span></div>";
-
                 return (body);
 
 
@@ -351,6 +639,7 @@ namespace Travel.Shared.Ultilities
                     message.Subject = mailSubject;
                     message.IsBodyHtml = true; //to make message body as html  
                     message.Body = htmlString;
+
                     using (SmtpClient smtp = new SmtpClient())
                     {
                         smtp.Port = 587;

@@ -12,6 +12,7 @@ using Travel.Data.Interfaces.INotify;
 using Travel.Data.Repositories;
 using Travel.Data.Repositories.NotifyRes;
 using Travel.Data.Responsives;
+using TravelApi.Helpers;
 using TravelApi.Hubs.HubServices;
 
 namespace TravelApi.Extensions
@@ -74,6 +75,26 @@ namespace TravelApi.Extensions
           .AddScoped<IHubRepository, HubRepository>();
             services
             .AddScoped<INotification, NotificationRes>();
+            services
+            .AddScoped<ILog, LogRepository>();
+            services
+           .AddScoped<IPayment, PaymentRes>();
+
+            services
+            .AddScoped<IImage, ImageRes>();
+
+            services
+            .AddScoped<IMessenger, MessengerRes>();
+
+            services
+                 .AddScoped<IVnPay, VnpayRes>();
+
+            services
+                .AddScoped<ICache, MemoryCache>();
+            services
+                .AddScoped<IMessenger, MessengerRes>();
+
+
             return services;
         
 

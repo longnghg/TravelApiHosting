@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Data.Interfaces;
@@ -21,10 +22,16 @@ namespace TravelApi.Controllers
         private Notification message;
         private Response res;
 
-        public VoucherController(IVoucher voucher)
+        public VoucherController(IVoucher voucher , ILog log)
         {
             _voucher = voucher;  
             res = new Response();
+        }
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
         }
         [HttpGet]
         [AllowAnonymous]
@@ -45,7 +52,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateVoucherViewModel>(result);
-                res = _voucher.CreateVoucher(createObj);
+              
+                var emailUser = GetEmailUserLogin().Value;
+                res = _voucher.CreateVoucher(createObj, emailUser);
             }
             else
             {
@@ -64,7 +73,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateVoucherViewModel>(result);
-                res = _voucher.UpdateVoucher(updateObj);
+                
+                var emailUser = GetEmailUserLogin().Value;
+                res = _voucher.UpdateVoucher(updateObj, emailUser);
             }
             else
             {
@@ -87,7 +98,18 @@ namespace TravelApi.Controllers
         [Route("delete-voucher")]
         public object DeleteVoucher(Guid idVoucher)
         {
-            res = _voucher.DeleteVoucher(idVoucher);
+          
+            var emailUser = GetEmailUserLogin().Value;
+            res = _voucher.DeleteVoucher(idVoucher, emailUser);
+            return Ok(res);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("vouchers-history")]
+        public object GetsVoucherHistory(Guid idCustomer)
+        {
+            res = _voucher.GetsVoucherHistory(idCustomer);
             return Ok(res);
         }
     }

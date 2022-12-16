@@ -26,22 +26,30 @@ namespace TravelApi.Hubs
                 {
                     var token = handler.ReadJwtToken(jwtToken);
                     var tokenS = token as JwtSecurityToken;
-                    var jti = tokenS.Claims.Where(x => x.Type == "EmployeeId").FirstOrDefault().Value;
+                    var jti = tokenS.Claims.Where(x => x.Type == "RoleId").FirstOrDefault();
 
                     // replace email with your claim name
                     
-                    if (jti != null && jti != "")
+                    if (jti != null && jti.Value != "")
                     {
-                        Groups.AddToGroupAsync(Context.ConnectionId, jti );
+                        Groups.AddToGroupAsync(Context.ConnectionId, jti.Value.ToUpper());
                     }
                 }
             }
             return base.OnConnectedAsync();
         }
-
-        public async Task GetInfo()
+        public async Task SendNotyf(string idRole)
         {
-            await Clients.Group("b76c4137-c497-42f5-821d-554a51862e45").SendAsync("Init");
+            var arrIdRole = idRole.Split(',');
+            foreach (var id in arrIdRole)
+            {
+                await Clients.Group(id.ToUpper()).SendAsync("Notification");
+            }
+        }
+        public async Task Chat(string idUser)
+        {
+            await Clients.User(idUser.ToUpper()).SendAsync("Message");
+            //await Clients.Group("b76c4137-c497-42f5-821d-554a51862e45").SendAsync("Init");
         }
         public override async Task OnDisconnectedAsync(Exception ex)
         {

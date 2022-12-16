@@ -15,6 +15,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Travel.Context.Models;
 using Travel.Data.Interfaces;
+using Travel.Shared.Ultilities;
 using Payment = PayPal.v1.Payments.Payment;
 
 namespace TravelApi.Controllers
@@ -30,8 +31,14 @@ namespace TravelApi.Controllers
         private readonly ITour _tour;
         private readonly ITourBooking _tourbooking;
         public double TyGiaUSD = 25000;
-
-        public PayController(IConfiguration config, ITourBooking tourBookingRes, ISchedule schedule, ITourBooking tourbooking, ITour tour)
+        private readonly IVnPay _vnPayRes;
+        private readonly IConfiguration _configuration;
+        public PayController(IConfiguration config,
+            ITourBooking tourBookingRes,
+            ISchedule schedule,
+            ITourBooking tourbooking,
+            ITour tour,
+            IVnPay vnPayRes)
         {
             _clientIdPaypal = config["PaypalSettings:ClientId"];
             _secretKeyPaypal = config["PaypalSettings:SecretKey"];
@@ -39,6 +46,9 @@ namespace TravelApi.Controllers
             _schedule = schedule;
             _tourbooking = tourbooking;
             _tour = tour;
+            _vnPayRes = vnPayRes;
+            _configuration = config;
+
         }
         //private HttpClient GetPaypalHttpClient()
         //{
@@ -90,11 +100,8 @@ namespace TravelApi.Controllers
         [Route("checkout-paypal")]
         public async Task<object> PaypalCheckout(string idTourBooking)
         {
-
             var environment = new SandboxEnvironment(_clientIdPaypal, _secretKeyPaypal);
             var client = new PayPalHttpClient(environment);
-
-
             #region get schedule
             var tourBooking = await _tourbooking.GetTourBookingByIdForPayPal(idTourBooking);
 
@@ -109,7 +116,6 @@ namespace TravelApi.Controllers
 
             float total = 0;
 
-
             if (tourBooking.ValuePromotion != 0)
             {
                 total = (float)((tourBooking.TotalPrice) / TyGiaUSD);
@@ -118,7 +124,7 @@ namespace TravelApi.Controllers
             {
                 total = (float)((tourBooking.TotalPrice)/TyGiaUSD);
             }
-
+            total = (float)Math.Round(total, 2);
 
             var item = new Item()
             {
@@ -159,8 +165,9 @@ namespace TravelApi.Controllers
                 },
                 RedirectUrls = new RedirectUrls()
                 {
-                    CancelUrl = "https://localhost:4200/Paypal/CheckoutFailed",
-                    ReturnUrl = $"http://localhost:4200/bill/" + idTourBooking
+                    //CancelUrl = _configuration["PaypalSettings:CancelUrl"],
+                    CancelUrl = $"{_configuration["UrlClientCustomer"]}bill/{idTourBooking}",
+                    ReturnUrl = $"{_configuration["PaypalSettings:ReturnUrl"]}api/pay/check-paypal?idTourBooking={idTourBooking}"
                 },
                 Payer = new Payer()
                 {
@@ -171,6 +178,7 @@ namespace TravelApi.Controllers
             request.RequestBody(payment);
             try
             {
+                
                 var response = await client.Execute(request);
                 var statusCode = response.StatusCode;
                 Payment result = response.Result<Payment>();
@@ -186,6 +194,8 @@ namespace TravelApi.Controllers
                     }
                 }
 
+                // update
+         
                 return new { status = 1, url = paypalRedirectUrl };
             }
             catch (HttpException httpException)
@@ -196,6 +206,40 @@ namespace TravelApi.Controllers
             }
         }
 
+
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("check-paypal")]
+        public async Task<object> UpdateStatusTourbooking(string idTourBooking)
+        {
+        
+              await  _tourbooking.DoPayment(idTourBooking);
+            
+            return Redirect($"{_configuration["UrlClientCustomer"]}/bill/{idTourBooking}");
+
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("checkout-vnpay")]
+        public async Task<object> VnPayCheckout(string idTourBooking)
+        {
+            var url = await _vnPayRes.CreatePaymentUrl(idTourBooking, HttpContext);
+            return new
+            {
+                status = 1,
+                url = url,
+            };
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("callback-vnpay")]
+        public async Task<object> PaymentCallback(string idTourBooking)
+        {
+            var response = await _vnPayRes.PaymentExecute(Request.Query  , idTourBooking);
+            return Redirect(response.UrlReturnBill);
+        }
 
     }
 }

@@ -9,6 +9,7 @@ namespace Travel.Context.Models
     {     
         public string IdTour { get; set; }
         public string NameTour { get; set; }
+        public string NameTour_EN { get; set; }
         public string Alias { get; set; }
         public double Rating { get; set; }
         public string ToPlace { get; set; }

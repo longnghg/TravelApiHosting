@@ -28,11 +28,17 @@ namespace TravelApi.Controllers
         private Notification message;
         private Response res;
 
-        public ScheduleController(ISchedule schedule)
+        public ScheduleController(ISchedule schedule , ILog log)
         {
             _schedule = schedule;
             res = new Response();
 
+        }
+
+        [NonAction]
+        private Claim GetEmailUserLogin()
+        {
+            return (User.Identity as ClaimsIdentity).Claims.Where(c => c.Type == ClaimTypes.Email).FirstOrDefault();
         }
 
         [HttpPost]
@@ -45,7 +51,9 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var createObj = JsonSerializer.Deserialize<CreateScheduleViewModel>(result);
-                res = _schedule.Create(createObj);
+          
+                var emailUser = GetEmailUserLogin().Value;
+                res = _schedule.Create(createObj, emailUser);
             }
             else
             {
@@ -64,7 +72,8 @@ namespace TravelApi.Controllers
             if (message == null)
             {
                 var updateObj = JsonSerializer.Deserialize<UpdateScheduleViewModel>(result);
-                res = _schedule.Update(updateObj);
+             var emailUser = GetEmailUserLogin().Value;
+                res = _schedule.Update(updateObj, emailUser);
             }
             else
             {
@@ -89,7 +98,9 @@ namespace TravelApi.Controllers
         [Route("delete-schedule")]
         public object DeleteTour(string idSchedule, Guid idUser)
         {
-            res = _schedule.Delete(idSchedule, idUser);
+            var emailUser = GetEmailUserLogin().Value;
+            res = _schedule.Delete(idSchedule, idUser, emailUser);
+           
             return Ok(res);
         }
         [HttpPut]
@@ -97,7 +108,9 @@ namespace TravelApi.Controllers
         [Route("restore-schedule")]
         public object RestoreSchedule(string idSchedule, Guid idUser)
         {
-            res = _schedule.RestoreShedule(idSchedule, idUser);
+            
+            var emailUser = GetEmailUserLogin().Value;
+            res = _schedule.RestoreShedule(idSchedule, idUser, emailUser);
             return Ok(res);
         }
 
@@ -138,7 +151,9 @@ namespace TravelApi.Controllers
         [Route("update-promotion")]
         public object UpdatePromotion(string idSchedule, int idPromotion)
         {
-            res = _schedule.UpdatePromotion(idSchedule, idPromotion);
+            var emailUser = GetEmailUserLogin().Value;
+            res = _schedule.UpdatePromotion(idSchedule, idPromotion, emailUser);
+           
             return Ok(res);
         }
         [HttpPost]
@@ -246,6 +261,16 @@ namespace TravelApi.Controllers
         public async Task<object> SearchSchedule([FromBody] JObject frmData)
         {
             res = await _schedule.SearchTourFilter(frmData);
+          
+            return Ok(res);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("update-promotion-last-hour")]
+        public object UpdatePromotionTourLastHour(DateTime date)
+        {
+            res = _schedule.UpdatePromotionTourLastHour(date);
             return Ok(res);
         }
     }

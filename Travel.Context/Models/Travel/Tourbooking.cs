@@ -37,10 +37,10 @@ namespace Travel.Context.Models
         public int Status {get;set; }
         public long CheckIn { get; set; }
         public long CheckOut { get; set; }
-
-        public long   ModifyDate{get;set;}
+        public long ModifyDate{get;set;}
+        public string UrlQR { get;set;}
+        public bool IsSendFeedBack { get; set; }
         public  Schedule Schedule { get; set; }
-
         public  Payment Payment { get; set; }
         public TourBookingDetails TourBookingDetails { get; set; }
 
