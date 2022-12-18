@@ -40,8 +40,17 @@ namespace Travel.Data.Interfaces
         Task<Schedule> GetScheduleByIdForPayPal(string idSchedule);
         Task<Schedule> GetScheduleByIdForVnPay(string idSchedule);
         Task<Response> AutomaticUpdatePromotionForSchedule();
+        Task<Response> AutomaticAddLastPromotionForSchedule();
         Task<Response> SearchTourFilter(JObject frmData);
-        Response CheckEmptyCapacity(string idSchedule, int adult, int child, int baby);
-        Response UpdatePromotionTourLastHour(DateTime datetime);
+        Task<bool> CheckEmptyCapacity(string idSchedule, int adult, int child, int baby);
+        //Response UpdatePromotionTourLastHour(DateTime datetime);
+
+
+        #region service call
+        Task<bool> IsScheduleInPromotion(string idSchedule);
+        Task<object> ServiceGetSchedule(string idSchedule);
+        Task<List<string>> ServiceGetListIdScheduleFinished();
+
+        #endregion
     }
 }

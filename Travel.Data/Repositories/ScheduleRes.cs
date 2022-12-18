@@ -48,6 +48,10 @@ namespace Travel.Data.Repositories
         {
             return Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now.AddMinutes(addMinutes));
         }
+        private long GetDateTimeDayConfig(int addDay = 0)
+        {
+            return Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now.AddDays(addDay));
+        }
         private void UpdateDatabase(Schedule input)
         {
             _db.Entry(input).State = EntityState.Modified;
@@ -586,7 +590,7 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CusGetsSchedulebyIdTour(string idTour)
+        public Response CusGetsSchedulebyIdTour(string idTour   )
         {
             try
             {
@@ -972,14 +976,14 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CheckEmptyCapacity(string idSchedule, int adult, int child, int baby)
+        public async Task<bool> CheckEmptyCapacity(string idSchedule, int adult, int child, int baby)
         {
             int cusRemain = 0;
             try
             {
-                var schedule = (from x in _db.Schedules.AsNoTracking()
+                var schedule = await (from x in _db.Schedules.AsNoTracking()
                                 where x.IdSchedule == idSchedule
-                                select x).FirstOrDefault();
+                                select x).FirstOrDefaultAsync();
                 int availableQuantity = schedule.QuantityCustomer;
 
                 cusRemain = schedule.MaxCapacity - schedule.QuantityCustomer;
@@ -987,17 +991,16 @@ namespace Travel.Data.Repositories
 
                 if (quantityCus <= cusRemain)
                 {
-                    return null;
+                    return true;
                 }
                 else
                 {
-                    return Ultility.Responses($"Tour này còn {(cusRemain != 0 ? cusRemain : "không còn")} chỗ, Cảm ơn quý khách !", Enums.TypeCRUD.Warning.ToString());
-
+                    return false;
                 }
             }
             catch (Exception e)
             {
-                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+                return false;
             }
         }
 
@@ -4078,31 +4081,118 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response UpdatePromotionTourLastHour(DateTime datetime)
+        //public Response UpdatePromotionTourLastHour(DateTime datetime)
+        //{
+        //    try
+        //    {
+        //        var promotion = (from x in _db.Promotions.AsNoTracking()
+        //                         where x.IdPromotion == -2
+        //                         select x.IdPromotion).FirstOrDefault();
+
+        //        var result = (from x in _db.Schedules.AsNoTracking()
+        //                      where x.EndDate <= Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(datetime)
+        //                      && x.QuantityCustomer < x.MaxCapacity
+        //                      select x).ToList();
+        //        foreach (var item in result)
+        //        {
+        //            item.PromotionId = promotion;
+        //        }
+        //        SaveChange();
+        //        return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
+
+        //    }
+        //    catch (Exception e)
+        //    {
+
+        //        return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+        //    }
+        //}
+
+        public async Task<bool> IsScheduleInPromotion(string idSchedule)
+        {
+            var isTourInPromotion = await (from s in _db.Schedules.AsNoTracking()
+                                     join p in _db.Promotions.AsNoTracking()
+                                     on s.PromotionId equals p.IdPromotion
+                                     where s.IdSchedule == idSchedule
+                                     && p.Value != 0
+                                     select s.IdSchedule).CountAsync();
+            if (isTourInPromotion > 0)
+                return true;
+            return false;
+        }
+
+        public async Task<object> ServiceGetSchedule(string idSchedule)
+        {
+
+            var schedule = await (from x in _db.Schedules.AsNoTracking()
+                                  where x.IdSchedule == idSchedule
+                                  select new
+                                  {
+                                      DepartureDate = x.DepartureDate,
+                                      ReturnDate = x.ReturnDate,
+                                      DeparturePlace = x.DeparturePlace,
+                                      Description = x.Description,
+                                      QuantityCustomer = x.QuantityCustomer,    
+                                      IdSchedule = x.IdSchedule,
+                                      FinalPrice = x.FinalPrice,
+                                      FinalPriceHoliday = x.FinalPriceHoliday,
+                                      IsHoliday = x.IsHoliday,
+                                      ValuePromotion = (from p in _db.Promotions.AsNoTracking()
+                                                        where p.IdPromotion == x.PromotionId
+                                                        select p.Value).FirstOrDefault(),
+                                      PriceChild = x.PriceChild,
+                                      PriceChildHoliday = x.PriceChildHoliday,
+                                      TourId = x.TourId,
+                                      Tour = (from t in _db.Tour.AsNoTracking()
+                                              where t.IdTour == x.TourId
+                                              select t).FirstOrDefault(),
+                                  }).FirstOrDefaultAsync();
+            return schedule;
+        }
+
+        public async Task<List<string>> ServiceGetListIdScheduleFinished()
+        {
+            var currentDate = DateTime.Now;
+            var day = currentDate.Day;
+            var month = currentDate.Month;
+            var year = currentDate.Year;
+
+            var dateTimeNow = DateTime.Parse($"{year}/{month}/{day}");
+            var unixDateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(dateTimeNow.AddDays(1).AddMinutes(-1));
+
+            var listIdScheduleFinished = await (from s in _db.Schedules.AsNoTracking()
+                                                where s.ReturnDate <= unixDateTimeNow
+                                                select s.IdSchedule).ToListAsync();
+            return listIdScheduleFinished;
+        }
+
+
+        public async Task<Response> AutomaticAddLastPromotionForSchedule()
         {
             try
             {
-                var promotion = (from x in _db.Promotions.AsNoTracking()
-                                 where x.IdPromotion == -2
-                                 select x.IdPromotion).FirstOrDefault();
-
-                var result = (from x in _db.Schedules.AsNoTracking()
-                              where x.EndDate <= Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(datetime)
-                              && x.QuantityCustomer < x.MaxCapacity
-                              select x).ToList();
-                foreach (var item in result)
+                var dateTimeNowConfigMinutes = GetDateTimeNow();
+                var dateTimeNowConfigDay = GetDateTimeDayConfig(-3);
+                var lsScheduleInLastPromotion = await (from x in _db.Schedules.AsNoTracking()
+                                          where x.EndDate <= dateTimeNowConfigDay
+                                          && x.ReturnDate >= dateTimeNowConfigMinutes
+                                          && x.Isdelete == false
+                                          select x).ToListAsync();
+                 lsScheduleInLastPromotion.ForEach(x => x.PromotionId = -1);
+                foreach (var item in lsScheduleInLastPromotion)
                 {
-                    item.PromotionId = promotion;
+                    UpdateDatabase(item);
                 }
-                SaveChange();
-                return Ultility.Responses($"Sửa thành công !", Enums.TypeCRUD.Success.ToString());
-
+                await SaveChangeAsync();
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
             }
             catch (Exception e)
             {
-
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+
             }
         }
+
+
     }
 }

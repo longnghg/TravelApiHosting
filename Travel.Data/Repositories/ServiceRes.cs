@@ -138,7 +138,7 @@ namespace Travel.Data.Repositories
                     if (type == TypeService.Hotel)
                     {
                         var check = CheckAddressHotel(address, provinceId, districtId, wardId);
-                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                         {
                             _message = check.Notification;
                             return string.Empty;
@@ -146,22 +146,22 @@ namespace Travel.Data.Repositories
                     }else if(type == TypeService.Restaurant)
                     {
                         var check = CheckAddressRestaurant(address, provinceId, districtId, wardId);
-                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                         {
                             _message = check.Notification;
                             return string.Empty;
                         }
-                        else
+                    }
+                    else
+                    {
+                        var check = CheckAddressPlace(address, provinceId, districtId, wardId);
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                         {
-                            var checkplace = CheckAddressPlace(address, provinceId, districtId, wardId);
-                            if (checkplace.Notification.Type == "Validation" || check.Notification.Type == "Error")
-                            {
-                                _message = check.Notification;
-                                return string.Empty;
-                            }
+                            _message = check.Notification;
+                            return string.Empty;
                         }
                     }
-                  
+
                 }
                 if (isUpdate)
                 {
@@ -362,7 +362,7 @@ namespace Travel.Data.Repositories
                            select x).FirstOrDefault();
                 if (obj != null)
                 {
-                    return Ultility.Responses("Địa chỉ ["+ Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                    return Ultility.Responses("Địa chỉ ["+ Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
                 }
                 return res;
 
@@ -388,7 +388,7 @@ namespace Travel.Data.Repositories
                            select x).FirstOrDefault();
                 if (obj != null)
                 {
-                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
                 }
                 return res;
 
@@ -414,7 +414,7 @@ namespace Travel.Data.Repositories
                            select x).FirstOrDefault();
                 if (obj != null)
                 {
-                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
                 }
                 return res;
 
@@ -653,6 +653,9 @@ namespace Travel.Data.Repositories
                 hotel.QuantityDBR = input.QuantityDBR;
                 hotel.QuantitySR = input.QuantitySR;
                 hotel.Star = input.Star;
+                hotel.ProvinceId = input.ProvinceId;
+                hotel.WardId = input.WardId;
+                hotel.DistrictId = input.DistrictId;
                 #endregion
                 UpdateDatabase<Hotel>(hotel);
                 SaveChange();
@@ -1025,6 +1028,9 @@ namespace Travel.Data.Repositories
                 restaurant.NameRestaurant = input.Name;
                 restaurant.Phone = input.Phone;
                 restaurant.ComboPrice = input.ComboPrice;
+                restaurant.ProvinceId = input.ProvinceId;
+                restaurant.DistrictId = input.DistrictId;
+                restaurant.WardId = input.WardId;
                 #endregion
 
                 string jsonContent = JsonSerializer.Serialize(restaurant);
@@ -1440,6 +1446,9 @@ namespace Travel.Data.Repositories
                 place.NamePlace = input.Name;
                 place.Phone = input.Phone;
                 place.PriceTicket = input.PriceTicket;
+                place.ProvinceId = input.ProvinceId;
+                place.DistrictId = input.DistrictId;
+                place.WardId = input.IdPlace;
                 #endregion
                 UpdateDatabase<Place>(place);
                 SaveChange();

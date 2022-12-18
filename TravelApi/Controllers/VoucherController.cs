@@ -7,6 +7,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Travel.Context.Models;
 using Travel.Data.Interfaces;
 using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel.VoucherVM;
@@ -112,5 +113,26 @@ namespace TravelApi.Controllers
             res = _voucher.GetsVoucherHistory(idCustomer);
             return Ok(res);
         }
+
+
+
+
+        #region service call
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("check-vourcher-by-code")]
+        public async Task<Voucher> CheckVourcherIsValid(string code,Guid customerId)
+        {
+            return await _voucher.CheckIsVoucherValid(code, customerId);
+        }
+        [HttpDelete]
+        [AllowAnonymous]
+        [Route("vourcher-customer")]
+        public async Task DeleteVoucherCustomer(Guid idVoucher)
+        {
+             await _voucher.DeleteVourcherCustomer(idVoucher);
+        }
+        #endregion
     }
 }

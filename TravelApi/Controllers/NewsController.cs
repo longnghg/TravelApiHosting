@@ -86,8 +86,10 @@ namespace TravelApi.Controllers
         [Route("translate-language")]
         public async Task<object> Translate(string input, string fromLang,string toLang) 
         {
-            var resultString = await news.Translate(input,fromLang,toLang);
-            return Ok(resultString);
+            var replaceStartTag = input.Replace("<p>", " ");
+            var replaceEndTag = replaceStartTag.Replace("</p>", " ");
+            res = await news.TranslateLang(replaceEndTag, fromLang,toLang);
+            return Ok(res);
 
         }
         [HttpGet]
@@ -95,9 +97,9 @@ namespace TravelApi.Controllers
         [Route("map-location")]
         public async Task<object> GetGoogleMapLocation(string locationString)
         {
-            var map = await news.GetGoogleMapLocation(locationString);
+            res = await news.GetGoogleMapLocationRes(locationString);
            
-            return Ok(map);
+            return Ok(res);
 
         }
 

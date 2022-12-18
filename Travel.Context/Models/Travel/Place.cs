@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -27,6 +28,8 @@ namespace Travel.Context.Models
         public Guid DistrictId { get; set; }
         public Guid WardId { get; set; }
         public virtual ICollection<CostTour> CostTours { get; set; }
+        [NotMapped]
+
         public virtual ICollection<TourBookingDetails> TourBookingDetails { get; set; }
 
     }

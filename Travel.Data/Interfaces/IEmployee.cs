@@ -29,5 +29,11 @@ namespace Travel.Data.Interfaces
 
         Response GetsSelectBoxEmployee(long fromDate, long toDate);
         Response GetsSelectBoxEmployeeUpdate(long fromDate, long toDate, string idSchedule);
+
+        #region service call
+        Task<List<Employee>> ServiceGetEmployee();
+        #endregion
+        Response GetStatisticTotalEmp();
+
     }
 }

@@ -82,7 +82,7 @@ namespace Travel.Data.Repositories
                 if (!String.IsNullOrEmpty(liscenseplate))
                 {
                     var check = CheckLiscensePlate(liscenseplate);
-                    if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                    if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                     {
                         _message = check.Notification;
                         return string.Empty;
@@ -699,7 +699,7 @@ namespace Travel.Data.Repositories
                                select x).FirstOrDefault();
                     if (obj != null)
                     {
-                        return Ultility.Responses("[" + LiscensePlate + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                        return Ultility.Responses("[" + LiscensePlate + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "liscensePlate");
                     }
                 return res;
 

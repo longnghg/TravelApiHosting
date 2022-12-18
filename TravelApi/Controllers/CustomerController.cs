@@ -63,11 +63,11 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         [Route("list-history-booking-bycustomer")]
-        public object GetHistoryByIdCustomer(Guid idCustomer)
+        public async Task<object> GetHistoryByIdCustomer(Guid idCustomer)
         {
-            res = customer.GetsHistory(idCustomer);
+            res = await customer.GetsHistory(idCustomer);
             return Ok(res);
         }
         [HttpGet]
@@ -82,9 +82,9 @@ namespace TravelApi.Controllers
         [HttpGet]
         [Authorize]
         [Route("detail-customer")]
-        public object GetCustomer(Guid idCustomer)
+        public async Task<object> GetCustomer(Guid idCustomer)
         {
-            res = customer.GetCustomer(idCustomer);
+            res = await customer.GetCustomer(idCustomer);
             //_messageHub.Clients.All.Init();
             return Ok(res);
         }
@@ -136,5 +136,16 @@ namespace TravelApi.Controllers
             res = await customer.UpdateBlockCustomer(idCustomer, isBlock);
             return Ok(res);
         }
+
+        #region service call
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("update-score")]
+        public async Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point)
+        {
+            return await customer.UpdateScoreToCustomer(idCustomer, point);
+        }
+
+        #endregion
     }
 }

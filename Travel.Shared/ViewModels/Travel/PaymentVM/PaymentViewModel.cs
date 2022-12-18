@@ -9,14 +9,14 @@ namespace Travel.Shared.ViewModels.Travel
 {
     public class PaymentViewModel
     {
-        private string idPayment;
+        private int idPayment;
         private string namePayment;
         private string type;
   
 
        
 
-        public string IdPayment { get => idPayment; set => idPayment = value; }
+        public int IdPayment { get => idPayment; set => idPayment = value; }
         public string NamePayment { get => namePayment; set => namePayment = value; }
         public string Type { get => type; set => type = value; }
         

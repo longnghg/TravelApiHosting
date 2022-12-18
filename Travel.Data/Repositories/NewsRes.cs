@@ -296,11 +296,15 @@ namespace Travel.Data.Repositories
                     }
 
                 }
-                foreach (var item in weatherRes.alerts)
+                if (weatherRes.alerts != null)
                 {
-                    item.description_vi = await Translate(item.description,"en","vi");
-                    item.event_vi = await Translate(item.@event, "en", "vi");
+                    foreach (var item in weatherRes.alerts)
+                    {
+                        item.description_vi = await Translate(item.description, "en", "vi");
+                        item.event_vi = await Translate(item.@event, "en", "vi");
+                    }
                 }
+                   
                 var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), weatherRes);
                 #region set cache
                 _cache.Set<Response>(res, $"GetApiWeather{location}");
@@ -333,7 +337,35 @@ namespace Travel.Data.Repositories
                     translation += string.Format(" {0}", Convert.ToString(translationLineString.Current));
                 }
                 if (translation.Length > 1) { translation = translation.Substring(1); };
+                
                 return translation;
+            }
+
+
+        }
+
+        public async Task<Response> TranslateLang(string input, string fromLang, string toLang)
+        {
+            string url = String.Format
+             ("https://translate.googleapis.com/translate_a/single?client=gtx&sl={0}&tl={1}&dt=t&q={2}",
+              fromLang, toLang, Uri.EscapeUriString(input));
+            using (HttpClient httpClient = new HttpClient())
+            {
+                string result = await httpClient.GetStringAsync(url);
+                var jsonData = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(result);
+
+                var translationItems = jsonData[0];
+                string translation = "";
+                foreach (object item in translationItems)
+                {
+                    IEnumerable translationLineObject = item as IEnumerable;
+                    IEnumerator translationLineString = translationLineObject.GetEnumerator();
+                    translationLineString.MoveNext();
+                    translation += string.Format(" {0}", Convert.ToString(translationLineString.Current));
+                }
+                if (translation.Length > 1) { translation = translation.Substring(1); };
+                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), translation);
+                return res;
             }
 
 
@@ -368,5 +400,38 @@ namespace Travel.Data.Repositories
                 return null;
             }
         }
+
+        public async Task<Response> GetGoogleMapLocationRes(string address)
+        {
+            try
+            {
+                string urlLocation = _config["UrlLocationMap:Url"].ToString();
+                string accessKey = _config["UrlLocationMap:AccessKey"].ToString();
+                using (var client = new HttpClient())
+                {
+                    string uri = $"{urlLocation}?access_key={accessKey}&query={address}";
+                    var request = new HttpRequestMessage
+                    {
+                        Method = HttpMethod.Get,
+                        RequestUri = new Uri(uri),
+                    };
+                    using (var response = await client.SendAsync(request))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        var body = await response.Content.ReadAsStringAsync();
+                        var listLocation = JsonSerializer.Deserialize<GoogleMap>(body);
+                        var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), listLocation.data.FirstOrDefault());
+                        return res;
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        
     }
 }

@@ -41,8 +41,8 @@ namespace Travel.Data.Repositories
                 var nameRole = PrCommon.GetString("nameRole", frmData);
                 if (!String.IsNullOrEmpty(nameRole))
                 {
-                    var check = CheckSameRole(nameRole);
-                    if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                    var check = CheckSameRole(nameRole, "nameRole");
+                    if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                     {
                         _message = check.Notification;
                         return string.Empty;
@@ -52,8 +52,8 @@ namespace Travel.Data.Repositories
                 var description = PrCommon.GetString("description", frmData);
                 if (!String.IsNullOrEmpty(description))
                 {
-                    var check = CheckSameRole(description);
-                    if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                    var check = CheckSameRole(description, "description");
+                    if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                     {
                         _message = check.Notification;
                         return string.Empty;
@@ -342,11 +342,17 @@ namespace Travel.Data.Repositories
 
         private bool CheckIsAdmin(int idRole)
         {
-            return (from x in _db.Roles.AsNoTracking()
-                    where x.IdRole == idRole
-                    select x).Count() > 0;
+            var currentRole = (from x in _db.Roles.AsNoTracking()
+                               where x.IdRole == idRole
+                               select x).FirstOrDefault();
+            bool isAdmin = currentRole.NameRole.ToLower() == "admin";
+            if (isAdmin)
+            {
+                return true;
+            }
+            return false;
         }
-        private Response CheckSameRole(string input)
+        private Response CheckSameRole(string input, string description)
         {
             try
             {
@@ -360,13 +366,12 @@ namespace Travel.Data.Repositories
                     if (Ultility.removeVietnameseSign(role.Description.ToLower().Replace(" ", "")).Contains(oriRoleInput))
                     {
                         return true;
-
                     }
                     return false;
                 });
                 if (obj.FirstOrDefault() != null)
                 {
-                    return Ultility.Responses("[" + input + "] này đã tồn tại !", Enums.TypeCRUD.Validation.ToString());
+                    return Ultility.Responses("[" + input + "] này đã tồn tại !", Enums.TypeCRUD.Validation.ToString(), description: description);
                 }
                 return res;
             }

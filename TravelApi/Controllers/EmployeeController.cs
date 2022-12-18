@@ -180,5 +180,21 @@ namespace TravelApi.Controllers
             res = employee.GetsSelectBoxEmployeeUpdate(fromDate, toDate, idSchedule);
             return Ok(res);
         }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("employee-s")]
+        public async Task<List<Employee>> ServiceGetEmployee()
+        {
+            return await employee.ServiceGetEmployee();
+
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("list-statistic-total-emp")]
+        public object GetStatisticTotalEmp()
+        {
+            res = employee.GetStatisticTotalEmp();
+            return Ok(res);
+        }
     }
 }

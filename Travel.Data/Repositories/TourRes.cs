@@ -1700,5 +1700,15 @@ namespace Travel.Data.Repositories
             catch (Exception e)
             { }
         }
+
+        public async Task<Tour> ServiceGetNameTourrByIdSchedule(string idSchedule)
+        {
+            var tour = await (from s in _db.Schedules.AsNoTracking()
+                                  join t in _db.Tour.AsNoTracking()
+                                  on s.TourId equals t.IdTour
+                              where s.IdSchedule == idSchedule
+                                  select t).FirstOrDefaultAsync();
+            return tour;
+        }
     }
 }

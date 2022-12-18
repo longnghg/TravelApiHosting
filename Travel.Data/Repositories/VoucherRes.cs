@@ -289,5 +289,31 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
+
+
+        #region service call
+        public async Task<Voucher> CheckIsVoucherValid(string code,Guid customerId)
+        {
+
+            var unixDateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+            var vourcher = await (from x in _db.Vouchers.AsNoTracking()
+                                  join vc in _db.Customer_Vouchers.AsNoTracking()
+                                  on x.IdVoucher equals vc.VoucherId
+                              where x.Code == code
+                              && vc.CustomerId == customerId
+                              && x.EndDate >= unixDateTimeNow
+                              select x).FirstOrDefaultAsync();
+            return vourcher;
+        }
+
+        public async Task DeleteVourcherCustomer(Guid idVoucher)
+        {
+            var voucherCus = await (from x in _db.Customer_Vouchers
+                                    where x.VoucherId == idVoucher
+                                    select x).FirstOrDefaultAsync();
+            _db.Customer_Vouchers.Remove(voucherCus);
+            await _db.SaveChangesAsync();
+        }
+        #endregion
     }
 }

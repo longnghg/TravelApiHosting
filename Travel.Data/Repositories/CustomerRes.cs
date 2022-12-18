@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
 
 namespace Travel.Data.Repositories
 {
@@ -25,7 +26,7 @@ namespace Travel.Data.Repositories
         private readonly IConfiguration _config;
         private Response res;
         private readonly ILog _log;
-        public CustomerRes(TravelContext db, IConfiguration config , ILog log)
+        public CustomerRes(TravelContext db, IConfiguration config, ILog log)
         {
             _db = db;
             message = new Notification();
@@ -51,6 +52,27 @@ namespace Travel.Data.Repositories
         private async Task SaveChangeAsync()
         {
             await _db.SaveChangesAsync();
+        }
+        private async Task<List<TourBooking>> CallServiceTourBookingByIdCustomer(Guid idCustomer)
+        {
+            using (var client = new HttpClient())
+            {
+                var urlService = _config["UrlService"].ToString();
+                client.BaseAddress = new Uri($"{urlService}");
+                client.DefaultRequestHeaders.Accept.Clear();
+                HttpResponseMessage response = await client.GetAsync($"api/tourbooking/list-tour-booking-by-id-customer-s?idCustomer={idCustomer}");
+                if (response.IsSuccessStatusCode)
+                {
+                    JsonSerializerOptions options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    string data = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<List<TourBooking>>(data, options);
+                }
+
+            }
+            return null;
         }
         public async Task<Response> CustomerSendRate(string idTour, int rating)
         {
@@ -119,7 +141,7 @@ namespace Travel.Data.Repositories
                     var phone = PrCommon.GetString("phone", frmData);
                     if (!String.IsNullOrEmpty(phone))
                     {
-                        
+
                         var check = CheckPhoneCustomer(phone, idCustomer != null ? idCustomer : null);
                         if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
                         {
@@ -130,7 +152,7 @@ namespace Travel.Data.Repositories
                     var birthday = PrCommon.GetString("birthday", frmData);
                     if (String.IsNullOrEmpty(birthday))
                     {
-                        
+
                     }
 
 
@@ -169,22 +191,22 @@ namespace Travel.Data.Repositories
                         objUpdate.Gender = Convert.ToBoolean(gender);
                         return JsonSerializer.Serialize(objUpdate);
                     }
-                        CreateCustomerViewModel objCreate = new CreateCustomerViewModel();
-                        objCreate.NameCustomer = nameCustomer;
-                        objCreate.Phone = phone;
-                        objCreate.Email = email;
-                        objCreate.Address = address;
-                        //objCreate.Birthday = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Parse(birthday));
-                        objCreate.Password = Ultility.Encryption(password);
-                        return JsonSerializer.Serialize(objCreate);
-                    }
-                    return string.Empty;
+                    CreateCustomerViewModel objCreate = new CreateCustomerViewModel();
+                    objCreate.NameCustomer = nameCustomer;
+                    objCreate.Phone = phone;
+                    objCreate.Email = email;
+                    objCreate.Address = address;
+                    //objCreate.Birthday = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Parse(birthday));
+                    objCreate.Password = Ultility.Encryption(password);
+                    return JsonSerializer.Serialize(objCreate);
                 }
+                return string.Empty;
+            }
             catch (Exception e)
             {
                 _message = Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message).Notification;
                 return string.Empty;
-            }     
+            }
         }
 
         public Response Create(CreateCustomerViewModel input)
@@ -197,7 +219,7 @@ namespace Travel.Data.Repositories
                 customer.IsDelete = false;
                 string jsonContent = JsonSerializer.Serialize(customer);
                 CreateDatabase(customer);
-               
+
                 return Ultility.Responses("Đăng ký thành công !", Enums.TypeCRUD.Success.ToString());
 
             }
@@ -211,10 +233,10 @@ namespace Travel.Data.Repositories
         public Response Gets()
         {
             try
-            {                       
+            {
                 var queryListCus = (from x in _db.Customers.AsNoTracking()
-                               where x.IsDelete == false 
-                               select x);
+                                    where x.IsDelete == false
+                                    select x);
 
 
                 int totalResult = queryListCus.Count();
@@ -225,20 +247,21 @@ namespace Travel.Data.Repositories
                 return res;
 
 
-            
+
             }
             catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-        public Response GetsHistory(Guid idCustomer)
+        public async Task<Response> GetsHistory(Guid idCustomer)
         {
             try
             {
-                var list = (from x in _db.TourBookings.AsNoTracking()
+                var listTourBookingByIdCustomer = await CallServiceTourBookingByIdCustomer(idCustomer);
+                var list = (from x in listTourBookingByIdCustomer
                             where x.CustomerId == idCustomer
-                            orderby x.DateBooking descending    
+                            orderby x.DateBooking descending
                             select new TourBooking
                             {
                                 IdTourBooking = x.IdTourBooking,
@@ -250,22 +273,22 @@ namespace Travel.Data.Repositories
                                 BookingNo = x.BookingNo,
                                 ValuePromotion = x.ValuePromotion,
                                 IsSendFeedBack = x.IsSendFeedBack,
-                                TourBookingDetails = (from tbd in _db.tourBookingDetails.AsNoTracking()
-                                                      where tbd.IdTourBookingDetails == x.IdTourBooking 
-                                                      select tbd).First(),
+                                TourBookingDetails = x.TourBookingDetails,
                                 Schedule = (from s in _db.Schedules.AsNoTracking()
                                             where x.ScheduleId == s.IdSchedule
-                                            select new Schedule {
+                                            select new Schedule
+                                            {
                                                 Description = s.Description,
                                                 DepartureDate = s.DepartureDate,
                                                 DeparturePlace = s.DeparturePlace,
                                                 ReturnDate = s.ReturnDate,
                                                 Tour = (from t in _db.Tour.AsNoTracking()
                                                         where s.TourId == t.IdTour
-                                                        select new Tour { 
-                                                        Thumbnail = t.Thumbnail,
-                                                        NameTour = t.NameTour,
-                                                        ToPlace = t.ToPlace
+                                                        select new Tour
+                                                        {
+                                                            Thumbnail = t.Thumbnail,
+                                                            NameTour = t.NameTour,
+                                                            ToPlace = t.ToPlace
                                                         }).First()
                                             }).First()
                             }).ToList();
@@ -336,8 +359,8 @@ namespace Travel.Data.Repositories
             try
             {
                 var account = await (from x in _db.Customers.AsNoTracking()
-                               where x.Email.ToLower() == email.ToLower()
-                               select x).FirstOrDefaultAsync();
+                                     where x.Email.ToLower() == email.ToLower()
+                                     select x).FirstOrDefaultAsync();
                 if (account != null)
                 {
                     string otpCode = Ultility.RandomString(8, false);
@@ -351,12 +374,12 @@ namespace Travel.Data.Repositories
 
                     var subjectOTP = _config["OTPSubject"];
                     var emailSend = _config["emailSend"];
-                    var keySecurity = _config["keySecurity"]; 
-                     var stringHtml = Ultility.getHtml(otpCode, subjectOTP, "OTP");
+                    var keySecurity = _config["keySecurity"];
+                    var stringHtml = Ultility.getHtml(otpCode, subjectOTP, "OTP");
 
 
 
-                    Ultility.sendEmail(stringHtml, email, "Yêu cầu quên mật khẩu", emailSend,keySecurity);
+                    Ultility.sendEmail(stringHtml, email, "Yêu cầu quên mật khẩu", emailSend, keySecurity);
 
 
 
@@ -377,13 +400,13 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-        public Response GetCustomer(Guid idCustomer)
+        public async Task<Response> GetCustomer(Guid idCustomer)
         {
             try
             {
-                var customer = (from x in _db.Customers.AsNoTracking()
+                var customer = await (from x in _db.Customers.AsNoTracking()
                                 where x.IdCustomer == idCustomer
-                                select x).First();
+                                select x).FirstOrDefaultAsync();
                 var result = Mapper.MapCustomer(customer);
                 if (result != null)
                 {
@@ -427,17 +450,17 @@ namespace Travel.Data.Repositories
 
 
 
-        public async Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point )
+        public async Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point)
         {
             try
             {
                 var customer = await (from x in _db.Customers.AsNoTracking()
                                       where x.IdCustomer == idCustomer
                                       select x).FirstOrDefaultAsync();
-                if (customer != null )
+                if (customer != null)
                 {
                     customer.Point += point;
-                    
+
                     customer.Legit += 10;
                     if (customer.Legit > 100)
                     {
@@ -450,7 +473,7 @@ namespace Travel.Data.Repositories
                 }
                 return false;
             }
-            catch 
+            catch
             {
                 return false;
 
@@ -555,7 +578,7 @@ namespace Travel.Data.Repositories
 
                 var listCustomer = new List<Customer>();
 
-                if(keywords.KwPoint > 0)
+                if (keywords.KwPoint > 0)
                 {
                     var querylistCustomer = (from c in _db.Customers
                                              where c.IsBlock == keywords.IsBlock &&
@@ -594,7 +617,7 @@ namespace Travel.Data.Repositories
                     return Ultility.Responses($"Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString());
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }

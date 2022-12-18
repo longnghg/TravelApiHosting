@@ -214,5 +214,26 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
+
+
+
+        #region service call
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("tour-by-idschedule-s")]
+        public async Task<Tour> ServiceGetNameTourrByIdSchedule(string idSchedule)
+        {
+           return await _tourRes.ServiceGetNameTourrByIdSchedule(idSchedule);
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("tour-s")]
+        public async Task<Tour> ServiceGetTourByIdTour(string idTour)
+        {
+            return await _tourRes.GetTourByIdForPayPal(idTour);
+        }
+        #endregion
+
     }
 }

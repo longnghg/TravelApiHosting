@@ -104,8 +104,8 @@ namespace Travel.Data.Repositories
                 var pageIndex = PrCommon.GetString("pageIndex", frmData) == null ? 1 : Convert.ToInt16(PrCommon.GetString("pageIndex", frmData));
                 var kwFromDate = PrCommon.GetString("fromDate", frmData);
                 var kwToDate = PrCommon.GetString("toDate", frmData);
-                var kwType = PrCommon.GetString("type", frmData);
-                var lsLog = (from x in _db.Logs.AsNoTracking()
+                var kwType = PrCommon.GetString("classContent", frmData);
+               var lsLog = (from x in _db.Logs.AsNoTracking()
                              where x.ClassContent == kwType
                              select x);
                 if ( !string.IsNullOrEmpty(kwFromDate))
@@ -115,6 +115,7 @@ namespace Travel.Data.Repositories
                             where x.CreationDate >= fromDateUnix
                             select x;
                 }
+              
                 if (!string.IsNullOrEmpty(kwToDate))
                 {
                     var toDateUnix = long.Parse(kwToDate);

@@ -32,5 +32,13 @@ namespace Travel.Data.Interfaces
         Response SearchTour(JObject frmData);
         Response SearchTourWaiting(JObject frmData);
         Task<Tour> GetTourByIdForPayPal(string idTour);
+
+
+
+
+
+
+
+        Task<Tour> ServiceGetNameTourrByIdSchedule(string idSchedule);
     }
 }

@@ -16,9 +16,9 @@ namespace Travel.Data.Interfaces
         Response Gets();
 
         Response Create(CreateCustomerViewModel input);
-        Response GetsHistory(Guid idCustomer);
+        Task<Response> GetsHistory(Guid idCustomer);
         Task<Response> SendOTP(string email);
-        Response GetCustomer(Guid idCustomer);
+        Task<Response> GetCustomer(Guid idCustomer);
          Task<Response> UpdateCustomer(UpdateCustomerViewModel input);
         Task<Response> CustomerSendRate(string idTour, int rating);
 

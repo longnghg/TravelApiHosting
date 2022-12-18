@@ -58,8 +58,7 @@ namespace TravelApi
             services.AddDatabase(Configuration)
                 .AddRepositories();
             services.AddScoped<IVoucher, VoucherRes>();
-            services.AddDbContext<TravelContext>(options =>
-                    options.UseSqlServer(Configuration.GetConnectionString("travelRoverEntities")));
+      
 
             //services.AddDbContext<NotificationContext>(options =>
             //        options.UseSqlServer(Configuration.GetConnectionString("notifyTravelEntities")));

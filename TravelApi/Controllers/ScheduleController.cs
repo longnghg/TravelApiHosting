@@ -8,6 +8,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Travel.Context.Models;
 using Travel.Data.Interfaces;
 using Travel.Data.Repositories;
 using Travel.Shared.Ultilities;
@@ -147,7 +148,7 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
         [HttpPut]
-        [ClaimRequirement(ClaimTypes.Name, "Admin")]
+        [Authorize]
         [Route("update-promotion")]
         public object UpdatePromotion(string idSchedule, int idPromotion)
         {
@@ -157,15 +158,25 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
         [HttpPost]
-        [ClaimRequirement(ClaimTypes.Name, "Admin")]
+        [Authorize]
         [Route("automatic-promotion-for-schedule")]
         public async Task<object> AutomaticUpdatePromotionForSchedule()
         {
             res = await _schedule.AutomaticUpdatePromotionForSchedule();
             return Ok(res);
         }
+        [HttpPost]
+        [Authorize]
+        [Route("last-promotion-for-schedule")]
+        public async Task<object> AutomaticAddLastPromotionForSchedule()
+        {
+            res = await _schedule.AutomaticAddLastPromotionForSchedule();
+            return Ok(res);
+        }
 
-        [HttpGet]
+        
+
+       [HttpGet]
         [AllowAnonymous]
         [Route("list-schedule-idtour")]
         public object GetsSchedulebyIdTour(string idtour, bool isDelete)
@@ -265,13 +276,54 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
+        //[HttpGet]
+        //[AllowAnonymous]
+        //[Route("update-promotion-last-hour")]
+        //public object UpdatePromotionTourLastHour(DateTime date)
+        //{
+        //    res = _schedule.UpdatePromotionTourLastHour(date);
+        //    return Ok(res);
+        //}
+
+
+        #region service call
+
         [HttpGet]
         [AllowAnonymous]
-        [Route("update-promotion-last-hour")]
-        public object UpdatePromotionTourLastHour(DateTime date)
+        [Route("schedule-in-promotion")]
+        public async Task<bool> IsScheduleInPromotion(string idSchedule)
         {
-            res = _schedule.UpdatePromotionTourLastHour(date);
-            return Ok(res);
+            return await _schedule.IsScheduleInPromotion(idSchedule);
         }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("schedule-s")]
+        public async Task<object> ServiceGetSchedule(string idSchedule)
+        {
+            return await _schedule.ServiceGetSchedule(idSchedule);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("update-quantity-s")]
+        public async Task ServiceUpdateQuantity(string idSchedule, int quantityAdult, int quantityChild, int quantityBaby)
+        {
+             await _schedule.UpdateCapacity(idSchedule, quantityAdult, quantityChild, quantityBaby);
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("check-empty-capacity")]
+        public async Task<bool> ServiceCheckEmptyCapacity(string idSchedule, int adult, int child, int baby)
+        {
+            return await _schedule.CheckEmptyCapacity(idSchedule, adult, child, baby);
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("list-id-finished-schedule")]
+        public async Task<List<string>> ServiceGetListIdScheduleFinished()
+        {
+            return await _schedule.ServiceGetListIdScheduleFinished();
+        }
+        #endregion
     }
 }

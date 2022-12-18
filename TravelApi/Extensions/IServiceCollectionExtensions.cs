@@ -37,10 +37,7 @@ namespace TravelApi.Extensions
         }
         public static IServiceCollection AddRepositories(this IServiceCollection services)
         {
-            services
-           .AddScoped<IComment, CommentRes>();
-            services
-            .AddScoped<IPayment, PaymentRes>();
+  
             services
               .AddScoped<IRole, RoleRes>();
             services
@@ -53,8 +50,7 @@ namespace TravelApi.Extensions
                 .AddScoped<IAuthentication, AuthenticationRes>();
             services
           .AddScoped<ITour, TourRes>();
-            services
-           .AddScoped<ICustomer, CustomerRes>();
+
             services
          .AddScoped<ISchedule, ScheduleRes>();
             services
@@ -65,10 +61,7 @@ namespace TravelApi.Extensions
           .AddScoped<ICostTour, CostTourRes>();
             services
           .AddScoped<IService, ServiceRes>();
-            services
-   .AddScoped<ITourBooking, TourBookingRes>();
-            services
-.AddScoped<IStatistic, StatisticRes>();
+
             services
                 .AddScoped<IPromotions, PromotionRes>();
             services
@@ -78,7 +71,8 @@ namespace TravelApi.Extensions
             services
             .AddScoped<ILog, LogRepository>();
             services
-           .AddScoped<IPayment, PaymentRes>();
+.AddScoped<ICustomer, CustomerRes>();
+
 
             services
             .AddScoped<IImage, ImageRes>();
@@ -87,13 +81,11 @@ namespace TravelApi.Extensions
             .AddScoped<IMessenger, MessengerRes>();
 
             services
-                 .AddScoped<IVnPay, VnpayRes>();
-
-            services
                 .AddScoped<ICache, MemoryCache>();
             services
                 .AddScoped<IMessenger, MessengerRes>();
-
+            services
+                .AddScoped<IComment, CommentRes>();
 
             return services;
         

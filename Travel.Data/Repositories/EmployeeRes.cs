@@ -63,7 +63,7 @@ namespace Travel.Data.Repositories
                     if (!String.IsNullOrEmpty(email) && isUpdate == false)
                     {
                         var check = CheckEmailEmployee(email);
-                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                         {
                             _message = check.Notification;
                             return string.Empty;
@@ -75,7 +75,7 @@ namespace Travel.Data.Repositories
                     if (!String.IsNullOrEmpty(phone) && isUpdate == false)
                     {
                         var check = CheckPhoneEmployee(phone);
-                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
                         {
                             _message = check.Notification;
                             return string.Empty;
@@ -634,7 +634,7 @@ namespace Travel.Data.Repositories
                            where x.IsDelete == false && x.Email == email select x).Count();
                 if (emp > 0)
                 {
-                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "email");
                 }
                 return res;
             }
@@ -660,7 +660,7 @@ namespace Travel.Data.Repositories
                         var obj = (from x in _db.Employees where x.Phone != oldPhone && x.Phone == phone select x).Count();
                         if (obj > 0)
                         {
-                            return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                            return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "phone");
                         }
                     }
                 }
@@ -669,7 +669,7 @@ namespace Travel.Data.Repositories
                     var emp = (from x in _db.Employees where x.Phone == phone select x).Count();
                     if (emp > 0)
                     {
-                        return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString());
+                        return Ultility.Responses("[" + phone + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "phone");
                     }
                 }
                 return res;
@@ -943,6 +943,41 @@ namespace Travel.Data.Repositories
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
+        }
+        public Response GetStatisticTotalEmp()
+        {
+            try
+            {
+                var queryTotalEmp = (from x in _db.Employees.AsNoTracking()
+                                     select x);
+                var CountTotalIsBlock = (from x in queryTotalEmp
+                                         where x.IsBlock == true
+                                         select x).Count(); // danh sách emp block
+                var CountTotalIsOnline = (from x in queryTotalEmp
+                                          where x.IsOnline == true
+                                          select x).Count();// danh sách cus đang hoạt động
+
+                var CountTotal = queryTotalEmp.Count();
+                var result = new
+                {
+                    TotalBlock = CountTotalIsBlock,
+                    TotalOnline = CountTotalIsOnline,
+                    Total = CountTotal
+                };
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+        public async     Task<List<Employee>> ServiceGetEmployee()
+        {
+            var employee = await (from x in _db.Employees.AsNoTracking()
+                                  where x.IsActive == true
+                                  && x.IsDelete == false
+                                  select x).ToListAsync();
+            return employee;
         }
     }
 }

@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Travel.Context.Models
 {
+    [NotMapped]
     public class TourBooking
     {
         public string IdTourBooking{get;set;}
@@ -40,7 +42,8 @@ namespace Travel.Context.Models
         public long ModifyDate{get;set;}
         public string UrlQR { get;set;}
         public bool IsSendFeedBack { get; set; }
-        public  Schedule Schedule { get; set; }
+
+        public Schedule Schedule { get; set; }
         public  Payment Payment { get; set; }
         public TourBookingDetails TourBookingDetails { get; set; }
 
