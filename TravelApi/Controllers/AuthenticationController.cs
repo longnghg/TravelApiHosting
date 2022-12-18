@@ -48,6 +48,30 @@ namespace TravelApi.Controllers
             TimeExpiredInMinutes = Convert.ToInt16(configuration["Token:TimeExpired"]);
            
         }
+        public Authentication GenerateTokenGuess()
+        {
+            Guid randomId = Guid.NewGuid();
+
+            var claim = new[]
+            {
+                                        new Claim(ClaimTypes.NameIdentifier,randomId.ToString()),
+                                     };
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));
+            var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(configuration["Token:Issuer"],
+                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
+                //configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddSeconds(25),
+                signingCredentials: signIn);
+
+            var tokenJWT = new JwtSecurityTokenHandler().WriteToken(token);
+
+            Authentication auth = new Authentication();
+            auth.Token = tokenJWT;
+            auth.Id = randomId;
+            auth.Name = $"Guest:{randomId}";
+            auth.DateExpired = DateTime.Now.AddMinutes(TimeExpiredInMinutes);
+            return auth;
+        }
         [NonAction]
         private Authentication GenerateTokenEmployee(Employee result)
         {
@@ -60,6 +84,7 @@ namespace TravelApi.Controllers
                                         new Claim(ClaimTypes.Email, result.Email),
                                         new Claim(ClaimTypes.NameIdentifier, result.IdEmployee.ToString()),
                                         new Claim("RoleId", result.RoleId.ToString()),
+                                        new Claim(ClaimTypes.Role, result.RoleId.ToString()),
                                         new Claim("UserId", result.IdEmployee.ToString())
                                      };
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));

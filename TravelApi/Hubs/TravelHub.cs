@@ -12,7 +12,6 @@ using Travel.Context.Models;
 
 namespace TravelApi.Hubs
 {
-    [Authorize]
     public class TravelHub : Hub
     {
         public override Task OnConnectedAsync()
@@ -21,6 +20,7 @@ namespace TravelApi.Hubs
             if (httpContext != null)
             {
                 var jwtToken = httpContext.Request.Query["access_token"];
+
                 var handler = new JwtSecurityTokenHandler();
                 if (!string.IsNullOrEmpty(jwtToken))
                 {
@@ -37,6 +37,11 @@ namespace TravelApi.Hubs
                 }
             }
             return base.OnConnectedAsync();
+        }
+        public async Task Block(string idUser)
+        {
+            await Clients.User(idUser.ToUpper()).SendAsync("BlockUser");
+
         }
         public async Task SendNotyf(string idRole)
         {
