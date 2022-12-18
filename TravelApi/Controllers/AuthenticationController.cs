@@ -48,6 +48,8 @@ namespace TravelApi.Controllers
             TimeExpiredInMinutes = Convert.ToInt16(configuration["Token:TimeExpired"]);
            
         }
+        [HttpGet("token-guess")]
+
         public Authentication GenerateTokenGuess()
         {
             Guid randomId = Guid.NewGuid();
