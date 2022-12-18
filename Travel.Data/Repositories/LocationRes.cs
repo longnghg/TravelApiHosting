@@ -37,9 +37,14 @@ namespace Travel.Data.Repositories
                 {
                 }
                 var nameProvince = PrCommon.GetString("nameProvince", frmData);
-                if (String.IsNullOrEmpty(nameProvince))
+                if (!String.IsNullOrEmpty(nameProvince))
                 {
-
+                    bool check = CheckSameNameProvince(nameProvince);
+                    if (check)
+                    {
+                        _message = Ultility.Responses($"{nameProvince} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                        return string.Empty;
+                    }
                 }
 
                 if (isUpdate)
@@ -71,8 +76,14 @@ namespace Travel.Data.Repositories
                 }
 
                 var nameDistrict = PrCommon.GetString("nameDistrict", frmData);
-                if (String.IsNullOrEmpty(nameDistrict))
+                if (!String.IsNullOrEmpty(nameDistrict))
                 {
+                    bool check = CheckSameNameDistrict(nameDistrict);
+                    if (check)
+                    {
+                        _message = Ultility.Responses($"{nameDistrict} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                        return string.Empty;
+                    }
                 }
 
                 var provinceId = PrCommon.GetString("provinceId", frmData);
@@ -110,8 +121,14 @@ namespace Travel.Data.Repositories
                 }
 
                 var nameWard = PrCommon.GetString("nameWard", frmData);
-                if (String.IsNullOrEmpty(nameWard))
+                if (!String.IsNullOrEmpty(nameWard))
                 {
+                    bool check = CheckSameNameDistrict(nameWard);
+                    if (check)
+                    {
+                        _message = Ultility.Responses($"{nameWard} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                        return string.Empty;
+                    }
                 }
 
                 var districtId = PrCommon.GetString("districtId", frmData);
@@ -692,6 +709,29 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
 
             }
+        }
+
+
+        private bool CheckSameNameProvince(string name)
+        {
+            name = name.Replace(" ", "").ToLower();
+            return (from x in _db.Provinces.AsNoTracking()
+                    where x.NameProvince.Replace(" ", "").ToLower() == name
+                    select x).Count()>0;
+        }
+        private bool CheckSameNameDistrict(string name)
+        {
+            name = name.Replace(" ", "").ToLower();
+            return (from x in _db.Districts.AsNoTracking()
+                    where x.NameDistrict.Replace(" ", "").ToLower() == name
+                    select x).Count() > 0;
+        }
+        private bool CheckSameNameWard(string name)
+        {
+            name = name.Replace(" ", "").ToLower();
+            return (from x in _db.Wards.AsNoTracking()
+                    where x.NameWard.Replace(" ", "").ToLower() == name
+                    select x).Count() > 0;
         }
     }
 }
