@@ -979,5 +979,43 @@ namespace Travel.Data.Repositories
                                   select x).ToListAsync();
             return employee;
         }
+
+        public Response GetListEmpHaveSchedule(Guid idEmployee, int pageIndex, int pageSize)
+        {
+            try
+            {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                var lsResult = (from x in _db.Schedules.AsNoTracking()
+                                where x.EmployeeId == idEmployee
+                                && x.ReturnDate >= dateTimeNow
+                                orderby x.DepartureDate ascending
+                                select new Schedule
+                                {
+                                    BeginDate = x.ReturnDate,
+                                    Car = (from c in _db.Cars.AsNoTracking()
+                                           where c.IdCar == x.CarId
+                                           select c).FirstOrDefault(),
+                                    QuantityCustomer = x.QuantityCustomer,
+                                    DepartureDate = x.DepartureDate,
+                                    DeparturePlace = x.DeparturePlace,
+                                    ReturnDate = x.ReturnDate,
+                                    Tour = (from t in _db.Tour.AsNoTracking()
+                                            where t.IdTour == x.TourId
+                                            select t).FirstOrDefault(),
+                                    Employee = (from e in _db.Employees.AsNoTracking()
+                                                where e.IdEmployee == idEmployee
+                                                select e).FirstOrDefault(),
+                                    Status = x.Status
+                                });
+                var result = lsResult.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                res.TotalResult = lsResult.Count();
+                return res;
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
     }
 }

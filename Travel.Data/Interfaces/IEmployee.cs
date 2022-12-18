@@ -34,6 +34,7 @@ namespace Travel.Data.Interfaces
         Task<List<Employee>> ServiceGetEmployee();
         #endregion
         Response GetStatisticTotalEmp();
+        Response GetListEmpHaveSchedule(Guid idEmployee, int pageIndex, int pageSize);
 
     }
 }

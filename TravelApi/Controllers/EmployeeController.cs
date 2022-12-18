@@ -196,5 +196,14 @@ namespace TravelApi.Controllers
             res = employee.GetStatisticTotalEmp();
             return Ok(res);
         }
+
+        [HttpGet]
+        [Authorize]
+        [Route("list-schedule-of-employee")]
+        public object GetListEmpHaveSchedule(Guid idEmployee, int pageIndex, int pageSize)
+        {
+            res = employee.GetListEmpHaveSchedule(idEmployee, pageIndex, pageSize);
+            return Ok(res);
+        }
     }
 }
