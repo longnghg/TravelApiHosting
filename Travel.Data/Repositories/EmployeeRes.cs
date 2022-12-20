@@ -121,12 +121,19 @@ namespace Travel.Data.Repositories
                     {
                     }
 
+                    var password = PrCommon.GetString("password", frmData);
+                    if (String.IsNullOrEmpty(password))
+                    {
+
+                    }
+
                     if (file != null)
                     {
                         image = Ultility.WriteFile(file, "Employee", idEmployee, ref _message).FilePath;
                         if (_message != null)
                         {
                             message = _message;
+                            return string.Empty;
                         }
                     }
 
@@ -138,21 +145,10 @@ namespace Travel.Data.Repositories
                         objUpdate.Phone = phone;
                         objUpdate.Email = email;
                         objUpdate.Address = address;
-                        try
-                        {
-                            var date = DateTime.Parse(birthday);
-                            objUpdate.Birthday = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(date);
-                        }
-                        catch (Exception)
-                        {
-                            objUpdate.Birthday = long.Parse(birthday);
-                        }
+                        objUpdate.Password = password;
+                        objUpdate.Birthday = long.Parse(birthday);
                         objUpdate.RoleId = (TitleRole)int.Parse(roleId);
-                        if (!String.IsNullOrEmpty(image))
-                        {
-                            objUpdate.Image = image;
-
-                        }
+                        objUpdate.Image = image;
                         objUpdate.IsActive = bool.Parse(isActive);
                         objUpdate.ModifyBy = modifyBy;
                         return JsonSerializer.Serialize(objUpdate);

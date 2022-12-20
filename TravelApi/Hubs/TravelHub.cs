@@ -12,6 +12,7 @@ using Travel.Context.Models;
 
 namespace TravelApi.Hubs
 {
+    [Authorize]
     public class TravelHub : Hub
     {
         public override Task OnConnectedAsync()

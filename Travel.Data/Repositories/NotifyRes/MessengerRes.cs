@@ -244,5 +244,35 @@ namespace Travel.Data.Repositories.NotifyRes
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), e.Message);
             }
         }
+
+        public async Task<Response> UpdateGuestMessenger(Guid idCus, Guid idGuest)
+        {
+            try
+            {
+                var nameCus = await (from x in _db.Customers
+                               where x.IdCustomer == idCus
+                               select x.NameCustomer).FirstOrDefaultAsync();
+
+                var result1 = (from x in _dbNotify.Messengers
+                              where x.SenderId == idGuest
+                              select x);
+                await result1.ForEachAsync(x => { x.SenderName = nameCus; x.SenderId = idCus; });
+                UpdateRangeDatabase(result1.ToList());
+
+                var result2 = (from x in _dbNotify.Messengers
+                               where x.ReceiverId == idGuest
+                               select x);
+                await result2.ForEachAsync(x => x.ReceiverId = idCus);
+                UpdateRangeDatabase(result2.ToList());
+
+                await SaveChangeAsync();
+
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), e.Message);
+            }
+        }
     }
 }

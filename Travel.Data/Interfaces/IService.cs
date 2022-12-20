@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using Travel.Context.Models;
 using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel.ContractVM;
 
@@ -47,5 +48,11 @@ namespace Travel.Data.Interfaces
         Response SearchHotel(JObject frmData);
         Response SearchPlace(JObject frmData);
         Response SearchRestaurant(JObject frmData);
+
+
+        Response GetListHotelByProvince(string toPlace);
+        Response GetListPlaceByProvince(string toPlace);
+        Response GetListRestaurantByProvince(string toPlace);
+
     }
 }

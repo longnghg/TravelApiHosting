@@ -8,6 +8,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Travel.Context.Models;
 using Travel.Data.Interfaces;
 using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel.ContractVM;
@@ -352,14 +353,16 @@ namespace TravelApi.Controllers
             res = _serviceRes.SearchPlace(frmData);
             return Ok(res);
         }
+
         [HttpPost]
         [Authorize]
-        [Route("search-Restaurant")]
+        [Route("search-restaurant")]
         public object SearchRestaurant([FromBody] JObject frmData)
         {
             res = _serviceRes.SearchRestaurant(frmData);
-            return Ok(res); 
+            return Ok(res);
         }
+
         //[HttpPost]
         //[Authorize]
         //[Route("search-place-waiting")]
@@ -377,5 +380,36 @@ namespace TravelApi.Controllers
         //    res = _serviceRes.SearchRestaurantWaiting(frmData);
         //    return Ok(res);
         //}
+
+
+
+        [HttpGet]
+        [Authorize]
+        [Route("list-hotel-by-province")]
+        public object GetListHotelByProvince(string toPlace)
+        {
+            res = _serviceRes.GetListHotelByProvince(toPlace);
+            return Ok(res);
+        }
+
+
+        [HttpGet]
+        [Authorize]
+        [Route("list-place-by-province")]
+        public object GetListPlaceByProvince(string toPlace)
+        {
+            res = _serviceRes.GetListPlaceByProvince(toPlace);
+            return Ok(res);
+        }
+
+
+        [HttpGet]
+        [Authorize]
+        [Route("list-restaurant-by-province")]
+        public object GetListRestaurantByProvince(string toPlace)
+        {
+            res = _serviceRes.GetListRestaurantByProvince(toPlace);
+            return Ok(res);
+        }
     }
 }

@@ -328,6 +328,7 @@ namespace Travel.Shared.Ultilities
                                        .ForMember(dto => dto.Phone, opt => opt.MapFrom(src => src.Phone))
                                        .ForMember(dto => dto.RoleDescription, opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Role.Description) ? "" : src.Role.Description))
                                        .ForMember(dto => dto.RoleId, opt => opt.MapFrom(src => src.RoleId))
+                                       .ForMember(dto => dto.Password, opt => opt.MapFrom(src => src.Password))
                                        .ForMember(dto => dto.RoleName, opt => opt.MapFrom(src => src.Role.NameRole))
                                        .ForMember(dto => dto.Address, opt => opt.MapFrom(src => src.Address))
                                        .ForMember(dto => dto.Gender, opt => opt.MapFrom(src => src.Gender));
@@ -350,6 +351,7 @@ namespace Travel.Shared.Ultilities
                           .ForMember(dto => dto.IdEmployee, opt => opt.MapFrom(src => src.IdEmployee))
                           .ForMember(dto => dto.NameEmployee, opt => opt.MapFrom(src => src.NameEmployee))
                           .ForMember(dto => dto.Email, opt => opt.MapFrom(src => src.Email))
+                            .ForMember(dto => dto.Password, opt => opt.MapFrom(src => src.Password))
                           .ForMember(dto => dto.Birthday, opt => opt.MapFrom(src => src.Birthday))
                           .ForMember(dto => dto.Image, opt => opt.MapFrom(src => src.Image))
                           .ForMember(dto => dto.Phone, opt => opt.MapFrom(src => src.Phone))
@@ -357,7 +359,8 @@ namespace Travel.Shared.Ultilities
                           .ForMember(dto => dto.Address, opt => opt.MapFrom(src => src.Address))
                           .ForMember(dto => dto.Gender, opt => opt.MapFrom(src => src.Gender))
                           .ForMember(dto => dto.ModifyBy, opt => opt.MapFrom(src => src.ModifyBy))
-                          .ForMember(dto => dto.ModifyDate, opt => opt.MapFrom(src => Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now)));
+                          .ForMember(dto => dto.ModifyDate, opt => opt.MapFrom(src => Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now)))
+                          .ForMember(dto => dto.CreateDate, opt => opt.MapFrom(src => Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now)));
 
                 cfg.CreateMap<CreateRoleViewModel, Role>()
                        .ForMember(dto => dto.NameRole, opt => opt.MapFrom(src => src.NameRole))

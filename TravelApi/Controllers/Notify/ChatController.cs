@@ -72,5 +72,14 @@ namespace TravelApi.Controllers.Notify
             return Ok(res);
         }
 
+        [HttpPut]
+        [Authorize]
+        [Route("update-guest-messenger")]
+        public async Task<object> UpdateGuestMessenger(Guid idCus, Guid idGuest)
+        {
+            res = await _messenger.UpdateGuestMessenger(idCus, idGuest);
+            return Ok(res);
+        }
+
     }
 }

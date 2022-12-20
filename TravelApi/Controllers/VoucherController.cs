@@ -114,7 +114,14 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
-
+        [HttpPost]
+        [Authorize]
+        [Route("search-voucher")]
+        public object SearchVoucher(JObject frmData)
+        {
+            res = _voucher.SearchVoucher(frmData);
+            return Ok(res);
+        }
 
 
         #region service call

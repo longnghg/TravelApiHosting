@@ -30,7 +30,7 @@ namespace Travel.Shared.ViewModels.Travel
         private bool isDelete;
         private bool isActive;
 
-
+        private string password;
 
         public string Email { get => email; set => email = value; }
         public long Birthday { get => birthday; set => birthday = value; }
@@ -48,5 +48,6 @@ namespace Travel.Shared.ViewModels.Travel
         public string NameEmployee { get => nameEmployee; set => nameEmployee = value; }
         public string Address { get => address; set => address = value; }
         public bool Gender { get => gender; set => gender = value; }
+        public string Password { get => password; set => password = value; }
     }
 }

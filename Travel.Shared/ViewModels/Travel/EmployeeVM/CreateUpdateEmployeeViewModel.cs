@@ -9,8 +9,9 @@ namespace Travel.Shared.ViewModels.Travel
 {
     public class UpdateEmployeeViewModel: CreateEmployeeViewModel
     {
-        
-       
+        private string password;
+
+        public string Password { get => password; set => password = value; }
     }
 
     public class CreateEmployeeViewModel

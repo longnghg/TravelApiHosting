@@ -56,7 +56,7 @@ namespace TravelApi.Controllers
 
             var claim = new[]
             {
-                                        new Claim(ClaimTypes.NameIdentifier,randomId.ToString()),
+                                        new Claim("UserId",randomId.ToString()),
                                      };
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

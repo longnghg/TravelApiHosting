@@ -159,5 +159,13 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
+        [HttpGet]
+        [Authorize]
+        [Route("select-box-promotion")]
+        public object SelectBoxPromotions(long fromDate, long toDate )
+        {
+            res = _promotion.SelectBoxPromotions(fromDate, toDate);
+            return Ok(res);
+        }
     }
 }

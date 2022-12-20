@@ -255,12 +255,14 @@ namespace Travel.Data.Responsives
             try
             {
                 var emp = (from x in _db.Employees
-                           where x.IsDelete == false &&
-                                 x.IdEmployee == idEmp
+                           where x.IdEmployee == idEmp
                            select x).FirstOrDefault();
-                emp.AccessToken = null;
-                emp.IsOnline = false;
-                _db.SaveChanges();
+                if (emp != null)
+                {
+                    emp.AccessToken = null;
+                    emp.IsOnline = false;
+                    _db.SaveChanges();
+                }
                 res.Notification.DateTime = DateTime.Now;
                 res.Notification.Messenge = "Đăng xuất thành công !";
                 res.Notification.Type = "Success";
@@ -390,7 +392,7 @@ namespace Travel.Data.Responsives
                 if (result != null)
                 {
                     var dateNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
-                    if (result.TimeBlock <= dateNow)
+                    if (result.TimeBlock <= dateNow && result.TimeBlock != 0)
                     {
                         result.IsBlock = false;
                         result.TimeBlock = 0;

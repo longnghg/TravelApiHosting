@@ -3383,7 +3383,9 @@ namespace Travel.Data.Repositories
                                   where s.Isdelete == false
                                    && s.EndDate > dateTimeNow
                                    && s.BeginDate <= dateTimeNow
-                                   && s.Approve == (int)Enums.ApproveStatus.Approved
+                                   && s.Approve == (int)Enums.ApproveStatus.Approved &&
+                                   s.DeparturePlace.ToLower().Contains(keywords.KwFrom) &&
+                                   s.Tour.ToPlace.ToLower().Contains(keywords.KwTo)
                                   select new Schedule
                                   {
                                       Alias = s.Alias,

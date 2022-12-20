@@ -22,7 +22,7 @@ namespace Travel.Data.Interfaces
         Response CreateTiket(Guid idVoucher, Guid idCus);
 
         Response GetsVoucherHistory(Guid idCustomer);
-
+        Response SearchVoucher(JObject frmData);
 
         #region service call
         Task<Voucher> CheckIsVoucherValid(string code, Guid customerId);

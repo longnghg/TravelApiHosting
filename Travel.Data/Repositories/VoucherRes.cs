@@ -315,5 +315,174 @@ namespace Travel.Data.Repositories
             await _db.SaveChangesAsync();
         }
         #endregion
+
+        public Response SearchVoucher(JObject frmData)
+        {
+            try
+            {
+                var totalResult = 0;
+                Keywords keywords = new Keywords();
+                var pageSize = PrCommon.GetString("pageSize", frmData) == null ? 10 : Convert.ToInt16(PrCommon.GetString("pageSize", frmData));
+                var pageIndex = PrCommon.GetString("pageIndex", frmData) == null ? 1 : Convert.ToInt16(PrCommon.GetString("pageIndex", frmData));
+
+                var isDelete = PrCommon.GetString("isDelete", frmData);
+                if (!String.IsNullOrEmpty(isDelete))
+                {
+                    keywords.IsDelete = Boolean.Parse(isDelete);
+                }
+                var kwCode = PrCommon.GetString("code", frmData);
+                if (!String.IsNullOrEmpty(kwCode))
+                {
+                    keywords.KwCode = kwCode.Trim().ToLower();
+                }
+                else
+                {
+                    keywords.KwCode = "";
+                }
+
+                var kwValue = PrCommon.GetString("value", frmData);
+                if (!String.IsNullOrEmpty(kwValue))
+                {
+                    keywords.KwValue = int.Parse(kwValue);
+                }
+                else
+                {
+                    keywords.KwValue = 0;
+                }
+
+                var kwBeginDate = PrCommon.GetString("startDate", frmData);
+                if (!String.IsNullOrEmpty(kwBeginDate))
+                {
+                    keywords.KwBeginDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Parse(kwBeginDate));
+                }
+                else
+                {
+                    keywords.KwBeginDate = 0;
+                }
+
+                var kwEndDate = PrCommon.GetString("endDate", frmData);
+                if (!String.IsNullOrEmpty(kwEndDate))
+                {
+                    keywords.KwEndDate = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Parse(kwEndDate).AddDays(1).AddSeconds(-1));
+                }
+                else
+                {
+                    keywords.KwEndDate = 0;
+                }
+                var listVoucher = new List<Voucher>();
+
+                #region querylistVoucher
+                if (keywords.KwBeginDate > 0 || keywords.KwEndDate > 0)
+                {
+                    if(keywords.KwValue > 0)
+                    {
+                        if (keywords.KwBeginDate > 0 && keywords.KwEndDate > 0)
+                        {
+                            var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                    where x.Code.ToLower().Contains(keywords.KwCode) &&
+                                                          x.Value == keywords.KwValue &&
+                                                          x.StartDate >= keywords.KwBeginDate &&
+                                                          x.EndDate <= keywords.KwEndDate
+                                                    select x);
+                            totalResult = querylistVoucher.Count();
+                            listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwBeginDate == 0 && keywords.KwEndDate > 0)
+                        {
+                            var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                    where x.Code.ToLower().Contains(keywords.KwCode) &&
+                                                          x.Value == keywords.KwValue &&
+                                                          x.EndDate <= keywords.KwEndDate
+                                                    select x);
+                            totalResult = querylistVoucher.Count();
+                            listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwBeginDate > 0 && keywords.KwEndDate == 0)
+                        {
+                            var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                    where x.Code.ToLower().Contains(keywords.KwCode) &&
+                                                          x.Value == keywords.KwValue &&
+                                                    x.StartDate >= keywords.KwBeginDate
+                                                    select x);
+                            totalResult = querylistVoucher.Count();
+                            listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                    }
+                    else
+                    {
+                        if (keywords.KwBeginDate > 0 && keywords.KwEndDate > 0)
+                        {
+                            var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                    where x.Code.ToLower().Contains(keywords.KwCode) &&
+                                                          x.StartDate >= keywords.KwBeginDate &&
+                                                          x.EndDate <= keywords.KwEndDate
+                                                    select x);
+                            totalResult = querylistVoucher.Count();
+                            listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwBeginDate == 0 && keywords.KwEndDate > 0)
+                        {
+                            var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                    where x.Code.ToLower().Contains(keywords.KwCode) &&
+                                                          x.EndDate <= keywords.KwEndDate
+                                                    select x);
+                            totalResult = querylistVoucher.Count();
+                            listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                        else if (keywords.KwBeginDate > 0 && keywords.KwEndDate == 0)
+                        {
+                            var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                    where x.Code.ToLower().Contains(keywords.KwCode) &&
+                                                    x.StartDate >= keywords.KwBeginDate
+                                                    select x);
+                            totalResult = querylistVoucher.Count();
+                            listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                        }
+                    }
+                }
+                else
+                {
+                    if (keywords.KwValue > 0)
+                    {
+                        var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                where x.Value == keywords.KwValue &&
+                                                x.Code.ToLower().Contains(keywords.KwCode)
+                                                select x);
+                        totalResult = querylistVoucher.Count();
+                        listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                    }
+                    else
+                    {
+                        var querylistVoucher = (from x in _db.Vouchers.AsNoTracking()
+                                                where x.Code.ToLower().Contains(keywords.KwCode)
+                                                select x);
+                        totalResult = querylistVoucher.Count();
+                        listVoucher = querylistVoucher.Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
+                    }
+
+                }
+
+                #endregion
+                
+                
+                var result = Mapper.MapVoucher(listVoucher);
+                if (result.Count() > 0)
+                {
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    res.TotalResult = totalResult;
+                    return res;
+                }
+                else
+                {
+                    return Ultility.Responses($"Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString());
+                }
+
+
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
     }
 }

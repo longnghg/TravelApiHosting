@@ -49,6 +49,7 @@ namespace Travel.Data.Repositories
             _db.Entry(input).State = EntityState.Added;
             _db.SaveChanges();
         }
+
         private async Task SaveChangeAsync()
         {
             await _db.SaveChangesAsync();
@@ -498,8 +499,8 @@ namespace Travel.Data.Repositories
                         customer.IsBlock = true;
                     }
 
-
-                    UpdateDatabase(customer);
+                    _db.Customers.Update(customer);
+                    //UpdateDatabase(customer);
                     await SaveChangeAsync();
                 }
                 return Ultility.Responses("Thay đổi trạng thái thành công !", Enums.TypeCRUD.Success.ToString());

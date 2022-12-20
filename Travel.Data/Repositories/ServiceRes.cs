@@ -99,7 +99,7 @@ namespace Travel.Data.Repositories
                 var phone = PrCommon.GetString("phone", frmData);
                 if (String.IsNullOrEmpty(phone))
                 {
-                }          
+                }
                 var name = PrCommon.GetString("name", frmData);
                 if (String.IsNullOrEmpty(name))
                 {
@@ -143,7 +143,8 @@ namespace Travel.Data.Repositories
                             _message = check.Notification;
                             return string.Empty;
                         }
-                    }else if(type == TypeService.Restaurant)
+                    }
+                    else if (type == TypeService.Restaurant)
                     {
                         var check = CheckAddressRestaurant(address, provinceId, districtId, wardId);
                         if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
@@ -362,7 +363,7 @@ namespace Travel.Data.Repositories
                            select x).FirstOrDefault();
                 if (obj != null)
                 {
-                    return Ultility.Responses("Địa chỉ ["+ Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
                 }
                 return res;
 
@@ -1812,8 +1813,6 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
         }
-
-
         public Response SearchPlace(JObject frmData)
         {
             try
@@ -2019,5 +2018,101 @@ namespace Travel.Data.Repositories
         }
 
 
+        public Response GetListHotelByProvince(string toPlace)
+        {
+            try
+            {
+ 
+                var listHotel = new List<Hotel>();
+                var idProvince = (from x in _db.Provinces
+                                     where x.NameProvince == toPlace
+                                     select x.IdProvince).FirstOrDefault();
+
+                var querylistHotel = (from x in _db.Hotels
+                                      where x.IsDelete == false &&
+                                      x.ProvinceId == idProvince
+                                      orderby x.ModifyDate descending
+                                      select x);
+                var result = Mapper.MapHotel(querylistHotel.ToList());
+                if (result.Count > 0)
+                {
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    return res;
+                }
+                else
+                {
+                    return Ultility.Responses("Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString(), result);
+                }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response GetListPlaceByProvince(string toPlace)
+        {
+            try
+            {
+
+                var listHotel = new List<Hotel>();
+                var idProvince = (from x in _db.Provinces
+                                  where x.NameProvince == toPlace
+                                  select x.IdProvince).FirstOrDefault();
+
+                var querylistPlace = (from x in _db.Places
+                                      where x.IsDelete == false &&
+                                      x.ProvinceId == idProvince
+                                      orderby x.ModifyDate descending
+                                      select x);
+                var result = Mapper.MapPlace(querylistPlace.ToList());
+                if (result.Count > 0)
+                {
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    return res;
+                }
+                else
+                {
+                    return Ultility.Responses("Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString(), result);
+                }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
+
+        public Response GetListRestaurantByProvince(string toPlace)
+        {
+            try
+            {
+
+                var listHotel = new List<Hotel>();
+                var idProvince = (from x in _db.Provinces
+                                  where x.NameProvince == toPlace
+                                  select x.IdProvince).FirstOrDefault();
+
+                var querylistRestaurant = (from x in _db.Restaurants
+                                      where x.IsDelete == false &&
+                                      x.ProvinceId == idProvince
+                                      orderby x.ModifyDate descending
+                                      select x);
+                var result = Mapper.MapRestaurant(querylistRestaurant.ToList());
+                if (result.Count > 0)
+                {
+                    var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+                    return res;
+                }
+                else
+                {
+                    return Ultility.Responses("Không có dữ liệu trả về !", Enums.TypeCRUD.Warning.ToString(), result);
+                }
+            }
+            catch (Exception e)
+            {
+                return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
+            }
+        }
     }
+    
 }

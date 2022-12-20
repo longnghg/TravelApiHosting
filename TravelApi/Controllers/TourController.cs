@@ -26,7 +26,7 @@ namespace TravelApi.Controllers
         private readonly ITour _tourRes;
         private Notification message;
         private Response res;
-
+        private const string Merchant = "-2";
 
         public TourController(ITour tourRes, ILog log)
         {
@@ -83,7 +83,7 @@ namespace TravelApi.Controllers
 
         // GET api/<TourController>/5
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize]
         [Route("list-tour")]
         public object Get(bool isDelete)
         {
@@ -100,7 +100,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize]
         [Route("detail-tour")]
         public object GetTour(string idTour)
         {
@@ -151,7 +151,7 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize]
         [Route("list-tour-with-schedule")]
         public async Task<object> GetTourWithSchedule()
         {
@@ -159,7 +159,7 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize]
         [Route("detail-tour-by-id")]
         public async Task<object> GetTourById(string idTour)
         {
@@ -168,7 +168,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize(Roles = Merchant)]
         [Route("list-tour-by-rating")]
         public async Task<object> GetsTourByRating(int pageIndex, int pageSize)
         {
@@ -177,7 +177,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize]
         [Route("search-complete")]
         public async Task<object> SearchComplete(string key)
         {
@@ -186,7 +186,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpPut]
-        [AllowAnonymous]
+        [Authorize]
         [Route("update-rating-tour")]
         public object UpdateRatingTour(int rating, string idTour)
         {

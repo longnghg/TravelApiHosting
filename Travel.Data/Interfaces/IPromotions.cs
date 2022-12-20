@@ -29,6 +29,7 @@ namespace Travel.Data.Interfaces
         Response StatisticPromotion();
 
         Response SearchPromotion(JObject frmData);
+        Response SelectBoxPromotions(long fromDate, long toDate);
 
     }
 }

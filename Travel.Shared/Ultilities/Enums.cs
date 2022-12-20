@@ -51,6 +51,7 @@ namespace Travel.Shared.Ultilities
         }
         public enum TitleRole
         {
+            Merchant = -2,
             Admin = -1,
             LocalManager = 1,
             ServiceManager = 2,
