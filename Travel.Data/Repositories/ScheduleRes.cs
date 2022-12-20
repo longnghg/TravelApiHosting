@@ -2017,7 +2017,6 @@ namespace Travel.Data.Repositories
 
                 var costTour = (from x in _db.CostTours.AsNoTracking()
                                 where x.IdSchedule == idSchedule
-                                && x.Approve == (int)ApproveStatus.Waiting
                                 select x).FirstOrDefault();
 
                 if (schedule != null)
