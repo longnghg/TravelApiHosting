@@ -206,6 +206,7 @@ namespace Travel.Data.Repositories
                              where x.IdPlace == input.PlaceId select x).FirstOrDefault();
                 CostTour cost =
                 cost = Mapper.MapCreateCost(input);
+                cost.Approve = (int)ApproveStatus.Waiting;
                 cost.TypeAction = "insert";
                 cost.PriceHotelDB = hotel.DoubleRoomPrice; // 1
                 cost.PriceHotelSR = hotel.SingleRoomPrice;
