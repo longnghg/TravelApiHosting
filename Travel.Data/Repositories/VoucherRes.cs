@@ -192,8 +192,11 @@ namespace Travel.Data.Repositories
         {
             try
             {
+                int addMinutes = 0;
+                var dateNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now.AddMinutes(addMinutes));
                 var list = (from x in _db.Vouchers.AsNoTracking()
-                          
+                            where x.StartDate <=  dateNow &&
+                                  x.EndDate >= dateNow
                             select x).ToList();
                 var result = Mapper.MapVoucher(list);
                 return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
@@ -277,9 +280,12 @@ namespace Travel.Data.Repositories
         {
             try
             {
-
+                int addMinutes = 0;
+                var dateNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now.AddMinutes(addMinutes));
                 var list = (from x in _db.Customer_Vouchers
-                            join v in _db.Vouchers on x.VoucherId equals v.IdVoucher              
+                            join v in _db.Vouchers on x.VoucherId equals v.IdVoucher
+                            where v.StartDate <= dateNow &&
+                                  v.EndDate >= dateNow
                             select v).ToList();
     
                 return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), list);
