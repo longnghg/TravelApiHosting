@@ -166,11 +166,19 @@ namespace Travel.Data.Repositories
                 {
                     return Ultility.Responses("Không thể phân quyền Admin !", Enums.TypeCRUD.Validation.ToString());
                 }
-                Role role = new Role();
-                role = Mapper.MapUpdateRole(input);
+                var lsRoleException = (from x in _db.Roles.AsNoTracking()
+                                       where x.IdRole <= 6
+                                       select x.IdRole).ToList();
+                if (lsRoleException.Contains(input.IdRole))
+                {
+                    return Ultility.Responses("Không thể sửa role cố định!", Enums.TypeCRUD.Validation.ToString());
+                }
+                Role role = _db.Roles.Find(input.IdRole);
+                role.Description = input.Description;
+                role.NameRole = input.NameRole;
                 string jsonContent = JsonSerializer.Serialize(role);
 
-                _db.Roles.Update(role);
+                _db.Entry(role).State = EntityState.Modified;
                 _db.SaveChanges();
 
                 bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Role");
