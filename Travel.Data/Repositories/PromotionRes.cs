@@ -784,7 +784,7 @@ namespace Travel.Data.Repositories
                          x.IsTempdata == false &&
                           x.FromDate >= fromDate &&
                           x.ToDate <= toDate &&
-                         x.Approve == Convert.ToInt16(Enums.ApproveStatus.Approved)
+                          x.IdPromotion != 1
                          select x);
 
                 var queryConcat = query1.Concat(query);
