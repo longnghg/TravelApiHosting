@@ -727,12 +727,14 @@ namespace Travel.Data.Repositories
                 lsIdCar.Add(item.Car);
                 lsIdEmployee.Add(item.Employee);
             }
-
+            
             var lsCarFree = (from x in _db.Cars.AsNoTracking()
                              where !lsIdCar.Contains(x.IdCar)
                              select x).ToList(); ;
+            var roleIdTourGuide = (int)Enums.TitleRole.TourGuide;
             var lsEmployeeFree = (from x in _db.Employees.AsNoTracking()
                                   where !lsIdEmployee.Contains(x.IdEmployee)
+                                  && x.RoleId == roleIdTourGuide
                                   select x).ToList();
             var result = new
             {

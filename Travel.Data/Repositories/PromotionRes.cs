@@ -767,41 +767,56 @@ namespace Travel.Data.Repositories
             {
                 
                 var totalResult = 0;
-                var queryListPromotion = (from x in _db.Promotions.AsNoTracking()
-                                          where
-                                          x.IsDelete == false &&
-                                          x.IsTempdata == false &&
-                                          x.Approve == Convert.ToInt16(Enums.ApproveStatus.Approved)
-                                          select x);
 
-                var queryvalue0 = (from x in queryListPromotion
-                                   where x.Value == 0
-                                   select x);
+                // value 0
+                var query = (from x in _db.Promotions.AsNoTracking()
+                             where x.Value == 0
+                             select x);
 
-                if (fromDate > 0 && toDate > 0)
+
+
+                if (fromDate == 0 && toDate == 0)
                 {
-                    queryListPromotion = (from x in queryListPromotion
-                                              where
-                                              x.FromDate >= fromDate &&
-                                              x.ToDate <= toDate
-                                              select x);
-                    totalResult = queryListPromotion.Count();
+                    return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), query.ToList());
                 }
+                query = (from x in _db.Promotions.AsNoTracking()
+                         where
+                         x.IsDelete == false &&
+                         x.IdPromotion != -2 &&
+                         x.IsTempdata == false &&
+                         x.Approve == Convert.ToInt16(Enums.ApproveStatus.Approved)
+                         select x);
+
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), query.ToList());
 
 
-                var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
-                if (fromDate > 0 && toDate > 0)
-                {
-                   var concatList = queryListPromotion.Concat(queryvalue0);
-                   res.Content = concatList;
-                }
-                else
-                {
-                    res.Content = queryvalue0;
-                }
-                    
-                res.TotalResult = totalResult;
-                return res;
+                //var queryvalue0 = (from x in queryListPromotion
+                //                   where x.Value == 0
+                //                   select x);
+
+                //if (fromDate > 0 && toDate > 0)
+                //{
+                //    queryListPromotion = (from x in queryListPromotion
+                //                              where
+                //                              x.FromDate >= fromDate &&
+                //                              x.ToDate <= toDate
+                //                              select x);
+                //    totalResult = queryListPromotion.Count();
+                //}
+
+
+                //var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
+                //if (fromDate > 0 && toDate > 0)
+                //{
+                //   var concatList = queryListPromotion.Concat(queryvalue0);
+                //   res.Content = concatList;
+                //}
+                //else
+                //{
+                //    res.Content = queryvalue0;
+                //}
+
+                //res.TotalResult = totalResult;
             }
             catch (Exception e)
             {
