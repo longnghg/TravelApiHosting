@@ -2109,7 +2109,6 @@ namespace Travel.Data.Repositories
                                 select x).FirstOrDefault();
                 var costTour = (from x in _db.CostTours.AsNoTracking()
                                 where x.IdSchedule == idSchedule
-                                && x.Approve == (int)ApproveStatus.Waiting
                                 select x).FirstOrDefault();
 
                 var timelines = (from x in _db.Timelines

@@ -37,15 +37,35 @@ namespace Travel.Data.Repositories
                 {
                 }
                 var nameProvince = PrCommon.GetString("nameProvince", frmData);
-                if (!String.IsNullOrEmpty(nameProvince))
+                #region validate
+                if (isUpdate)
                 {
-                    bool check = CheckSameNameProvince(nameProvince);
-                    if (check)
+                    if (!String.IsNullOrEmpty(nameProvince))
                     {
-                        _message = Ultility.Responses($"{nameProvince} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
-                        return string.Empty;
+                        bool check = CheckSameNameProvince(nameProvince,idProvince);
+                        if (check)
+                        {
+                            _message = Ultility.Responses($"{nameProvince} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                            return string.Empty;
+                        }
                     }
                 }
+                else
+                {
+                    if (!String.IsNullOrEmpty(nameProvince))
+                    {
+                        bool check = CheckSameNameProvince(nameProvince);
+                        if (check)
+                        {
+                            _message = Ultility.Responses($"{nameProvince} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                            return string.Empty;
+                        }
+                    }
+                }
+                
+
+                #endregion
+
 
                 if (isUpdate)
                 {
@@ -76,15 +96,38 @@ namespace Travel.Data.Repositories
                 }
 
                 var nameDistrict = PrCommon.GetString("nameDistrict", frmData);
-                if (!String.IsNullOrEmpty(nameDistrict))
+
+                #region validate
+                if (isUpdate)
                 {
-                    bool check = CheckSameNameDistrict(nameDistrict);
-                    if (check)
+                    if (!String.IsNullOrEmpty(nameDistrict))
                     {
-                        _message = Ultility.Responses($"{nameDistrict} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
-                        return string.Empty;
+                        bool check = CheckSameNameDistrict(nameDistrict, idDistrict);
+                        if (check)
+                        {
+                            _message = Ultility.Responses($"{nameDistrict} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                            return string.Empty;
+                        }
                     }
                 }
+                else
+                {
+
+                    if (!String.IsNullOrEmpty(nameDistrict))
+                    {
+                        bool check = CheckSameNameDistrict(nameDistrict);
+                        if (check)
+                        {
+                            _message = Ultility.Responses($"{nameDistrict} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                            return string.Empty;
+                        }
+                    }
+                }
+
+
+                #endregion
+
+
 
                 var provinceId = PrCommon.GetString("provinceId", frmData);
                 if (String.IsNullOrEmpty(provinceId))
@@ -121,15 +164,37 @@ namespace Travel.Data.Repositories
                 }
 
                 var nameWard = PrCommon.GetString("nameWard", frmData);
-                if (!String.IsNullOrEmpty(nameWard))
+                #region validate
+                if (isUpdate)
                 {
-                    bool check = CheckSameNameDistrict(nameWard);
-                    if (check)
+                    if (!String.IsNullOrEmpty(nameWard))
                     {
-                        _message = Ultility.Responses($"{nameWard} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
-                        return string.Empty;
+                        bool check = CheckSameNameDistrict(nameWard, idWard);
+                        if (check)
+                        {
+                            _message = Ultility.Responses($"{nameWard} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                            return string.Empty;
+                        }
                     }
                 }
+                else
+                {
+
+                    if (!String.IsNullOrEmpty(nameWard))
+                    {
+                        bool check = CheckSameNameDistrict(nameWard);
+                        if (check)
+                        {
+                            _message = Ultility.Responses($"{nameWard} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;
+                            return string.Empty;
+                        }
+                    }
+                }
+
+
+                #endregion
+
+
 
                 var districtId = PrCommon.GetString("districtId", frmData);
                 if (String.IsNullOrEmpty(districtId))
@@ -712,26 +777,144 @@ namespace Travel.Data.Repositories
         }
 
 
-        private bool CheckSameNameProvince(string name)
+        private bool CheckSameNameProvince(string name, string idProvince = null)
         {
-            name = name.Replace(" ", "").ToLower();
-            return (from x in _db.Provinces.AsNoTracking()
-                    where x.NameProvince.Replace(" ", "").ToLower() == name
-                    select x).Count()>0;
+            try
+            {
+                name = name.Replace(" ", "").ToLower();
+                if (!string.IsNullOrEmpty(idProvince)) // update
+                {
+                    Guid id = Guid.Parse(idProvince);
+                    string oldData = (from x in _db.Provinces.AsNoTracking()
+                                       where x.IdProvince == id
+                                       select x).FirstOrDefault().NameProvince;
+
+
+                    oldData = oldData.Replace(" ", "").ToLower();
+              
+
+
+                    if (name != oldData) // có thay đổi  
+                    {
+                        var obj = (from x in _db.Provinces where x.NameProvince.Replace(" ", "").ToLower() != oldData && 
+                                   x.NameProvince.Replace(" ", "").ToLower() == name select x).Count();
+                        if (obj > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else // create
+                {
+                    return (from x in _db.Provinces.AsNoTracking()
+                            where x.NameProvince.Replace(" ", "").ToLower() == name
+                            select x).Count() > 0;
+                }
+                return false;
+
+            }
+            catch (Exception e)
+            {
+
+                return true;
+            }
+
+
+
+           
         }
-        private bool CheckSameNameDistrict(string name)
+        private bool CheckSameNameDistrict(string name, string idProvince= null)
         {
-            name = name.Replace(" ", "").ToLower();
-            return (from x in _db.Districts.AsNoTracking()
-                    where x.NameDistrict.Replace(" ", "").ToLower() == name
-                    select x).Count() > 0;
+            try
+            {
+                name = name.Replace(" ", "").ToLower();
+
+                if (!string.IsNullOrEmpty(idProvince)) // update
+                {
+                    Guid id = Guid.Parse(idProvince);
+                    string oldData = (from x in _db.Districts.AsNoTracking()
+                                      where x.IdDistrict == id
+                                      select x).FirstOrDefault().NameDistrict;
+
+
+                    oldData = oldData.Replace(" ", "").ToLower();
+
+
+
+                    if (name != oldData) // có thay đổi  
+                    {
+                        var obj = (from x in _db.Districts
+                                   where x.NameDistrict.Replace(" ", "").ToLower() != oldData &&
+           x.NameDistrict.Replace(" ", "").ToLower() == name
+                                   select x).Count();
+                        if (obj > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else // create
+                {
+                    return (from x in _db.Districts.AsNoTracking()
+                            where x.NameDistrict.Replace(" ", "").ToLower() == name
+                            select x).Count() > 0;
+                }
+                return false;
+
+            }
+            catch (Exception e)
+            {
+
+                return true;
+            }
+
         }
-        private bool CheckSameNameWard(string name)
+        private bool CheckSameNameWard(string name, string idProvince = null)
         {
-            name = name.Replace(" ", "").ToLower();
-            return (from x in _db.Wards.AsNoTracking()
-                    where x.NameWard.Replace(" ", "").ToLower() == name
-                    select x).Count() > 0;
+
+
+            try
+            {
+                name = name.Replace(" ", "").ToLower();
+
+                if (!string.IsNullOrEmpty(idProvince)) // update
+                {
+                    Guid id = Guid.Parse(idProvince);
+                    string oldData = (from x in _db.Wards.AsNoTracking()
+                                      where x.IdWard == id
+                                      select x).FirstOrDefault().NameWard;
+
+
+                    oldData = oldData.Replace(" ", "").ToLower();
+
+
+
+                    if (name != oldData) // có thay đổi  
+                    {
+                        var obj = (from x in _db.Wards
+                                   where x.NameWard.Replace(" ", "").ToLower() != oldData &&
+           x.NameWard.Replace(" ", "").ToLower() == name
+                                   select x).Count();
+                        if (obj > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else // create
+                {
+                    return (from x in _db.Wards.AsNoTracking()
+                            where x.NameWard.Replace(" ", "").ToLower() == name
+                            select x).Count() > 0;
+                }
+                return false;
+
+            }
+            catch (Exception e)
+            {
+
+                return true;
+            }
         }
     }
 }

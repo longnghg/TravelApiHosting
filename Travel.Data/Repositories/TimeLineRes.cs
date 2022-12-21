@@ -36,21 +36,15 @@ namespace Travel.Data.Repositories
         public Response Create(ICollection<CreateTimeLineViewModel> input, string emailUser)
         {
             try
-             {
+            {
                 ICollection<Timeline> timeline = Mapper.MapCreateTimeline(input);
                 string jsonContent = JsonSerializer.Serialize(timeline);
                 _db.Timelines.AddRange(timeline.AsEnumerable());
 
                 _db.SaveChanges();
-                bool result = _log.AddLog(content: jsonContent, type: "create", emailCreator: emailUser, classContent: "Timeline");
-                if (result)
-                {
-                    return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
-                }
-                else
-                {
-                    return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
-                }
+
+                return Ultility.Responses("Thêm thành công !", Enums.TypeCRUD.Success.ToString());
+
             }
             catch (Exception e)
             {
@@ -64,8 +58,8 @@ namespace Travel.Data.Repositories
             {
                 var ads = input.ToList()[0].IdSchedule;
                 var timelines = (from x in _db.Timelines.AsNoTracking()
-                                where x.IdSchedule == input.ToList()[0].IdSchedule
-                                select x).ToList();
+                                 where x.IdSchedule == input.ToList()[0].IdSchedule
+                                 select x).ToList();
 
                 var timelineOld = new List<Timeline>();
                 foreach (var item in timelines)
@@ -81,7 +75,7 @@ namespace Travel.Data.Repositories
 
                 _db.Timelines.AddRange(timelineOld.AsEnumerable());
                 ICollection<Timeline> timeline = Mapper.MapUpdateTimeline(input);
-              
+
                 string jsonContent = JsonSerializer.Serialize(timeline);
                 _db.Timelines.UpdateRange(timeline.AsEnumerable());
                 _db.SaveChanges();
@@ -95,7 +89,7 @@ namespace Travel.Data.Repositories
                     return Ultility.Responses("Lỗi log!", Enums.TypeCRUD.Error.ToString());
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
@@ -135,7 +129,7 @@ namespace Travel.Data.Repositories
                 {
                     res.Content = result;
                 }
- 
+
                 return res;
             }
             catch (Exception e)
@@ -152,7 +146,8 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                var timeline = (from x in _db.Timelines where x.IdSchedule == IdSchedule 
+                var timeline = (from x in _db.Timelines
+                                where x.IdSchedule == IdSchedule
                                 orderby x.FromTime
                                 select x).ToList();
                 var result = Mapper.MapTimeLine(timeline);

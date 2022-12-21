@@ -127,29 +127,58 @@ namespace Travel.Data.Repositories
                     if (String.IsNullOrEmpty(nameCustomer))
                     {
                     }
-                    var email = PrCommon.GetString("email", frmData);
-                    if (!String.IsNullOrEmpty(email) && isUpdate == false)
-                    {
-                        var check = CheckEmailCustomer(email);
-                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
-                        {
-                            _message = check.Notification;
-                            return string.Empty;
-                        }
-                    }
-
-
                     var phone = PrCommon.GetString("phone", frmData);
-                    if (!String.IsNullOrEmpty(phone))
-                    {
+                    var email = PrCommon.GetString("email", frmData);
 
-                        var check = CheckPhoneCustomer(phone, idCustomer != null ? idCustomer : null);
-                        if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+
+                    #region validation
+
+                    if (isUpdate)
+                    {
+                        if (!String.IsNullOrEmpty(phone))
                         {
-                            _message = check.Notification;
-                            return string.Empty;
+                            var check = CheckPhoneCustomer(phone, idCustomer);
+                            if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                        if (!String.IsNullOrEmpty(email))
+                        {
+                            var check = CheckEmailCustomer(email, idCustomer);
+                            if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
                         }
                     }
+                    else
+                    {
+                        if (!String.IsNullOrEmpty(phone))
+                        {
+                            var check = CheckPhoneCustomer(phone);
+                            if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                        if (!String.IsNullOrEmpty(email))
+                        {
+                            var check = CheckEmailCustomer(email);
+                            if (check.Notification.Type == "Validation" || check.Notification.Type == "Error")
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                    }
+                 
+                    
+                    #endregion
+
                     var birthday = PrCommon.GetString("birthday", frmData);
                     if (String.IsNullOrEmpty(birthday))
                     {
@@ -633,22 +662,43 @@ namespace Travel.Data.Repositories
 
         #region check same
 
-        public Response CheckEmailCustomer(string email)
+        public Response CheckEmailCustomer(string email,string idCustomer = null)
         {
             try
             {
-                var cus = (from x in _db.Customers where x.Email == email select x).Count();
-                if (cus > 0)
+                // update
+                if (!string.IsNullOrEmpty(idCustomer))
                 {
-                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "Email");
+                    Guid id = Guid.Parse(idCustomer);
+                    string oldEmail = (from x in _db.Customers.AsNoTracking()
+                                       where x.IdCustomer == id
+                                       select x).FirstOrDefault().Email;
+                    if (email != oldEmail) // có thay đổi sdt
+                    {
+                        var obj = (from x in _db.Employees where x.Email != oldEmail && x.Email == email select x).Count();
+                        if (obj > 0)
+                        {
+                            return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "email");
+                        }
+                    }
                 }
                 else
                 {
-                    return Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
+                    var emp = (from x in _db.Customers.AsNoTracking()
+                               where x.IsDelete == false && x.Email == email
+                               select x).Count();
+                    if (emp > 0)
+                    {
+                        return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "email");
+                    }
                 }
+                return res;
+
+
             }
             catch (Exception e)
             {
+
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
 
             }

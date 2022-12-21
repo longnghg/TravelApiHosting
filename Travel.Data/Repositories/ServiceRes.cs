@@ -66,7 +66,7 @@ namespace Travel.Data.Repositories
                 var idHotel = PrCommon.GetString("idHotel", frmData);
                 var idPlace = PrCommon.GetString("idPlace", frmData);
 
-                var idRestaurant = PrCommon.GetString("idRestaurant", frmData) ?? "0";
+                var idRestaurant = PrCommon.GetString("idRestaurant", frmData);
 
                 if (String.IsNullOrEmpty(idHotel))
                 {
@@ -133,36 +133,75 @@ namespace Travel.Data.Repositories
                 {
                 }
                 var address = PrCommon.GetString("address", frmData);
-                if (!String.IsNullOrEmpty(address))
+
+                if (isUpdate)
                 {
-                    if (type == TypeService.Hotel)
+                    if (!String.IsNullOrEmpty(address))
                     {
-                        var check = CheckAddressHotel(address, provinceId, districtId, wardId);
-                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        if (type == TypeService.Hotel)
                         {
-                            _message = check.Notification;
-                            return string.Empty;
+                            var check = CheckAddressHotel(address, provinceId, districtId, wardId, idHotel);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
                         }
-                    }
-                    else if (type == TypeService.Restaurant)
-                    {
-                        var check = CheckAddressRestaurant(address, provinceId, districtId, wardId);
-                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        else if (type == TypeService.Restaurant)
                         {
-                            _message = check.Notification;
-                            return string.Empty;
+                            var check = CheckAddressRestaurant(address, provinceId, districtId, wardId, idRestaurant);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
                         }
-                    }
-                    else
-                    {
-                        var check = CheckAddressPlace(address, provinceId, districtId, wardId);
-                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        else
                         {
-                            _message = check.Notification;
-                            return string.Empty;
+                            var check = CheckAddressPlace(address, provinceId, districtId, wardId, idPlace);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
                         }
+
                     }
 
+                }
+                else
+                {
+                    if (!String.IsNullOrEmpty(address))
+                    {
+                        if (type == TypeService.Hotel)
+                        {
+                            var check = CheckAddressHotel(address, provinceId, districtId, wardId);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                        else if (type == TypeService.Restaurant)
+                        {
+                            var check = CheckAddressRestaurant(address, provinceId, districtId, wardId);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                        else
+                        {
+                            var check = CheckAddressPlace(address, provinceId, districtId, wardId);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+
+                    }
                 }
                 if (isUpdate)
                 {
@@ -349,22 +388,49 @@ namespace Travel.Data.Repositories
             }
         }
 
-        private Response CheckAddressHotel(string Address, string ProvinceId, string DistricId, string WardId)
+        private Response CheckAddressHotel(string Address, string ProvinceId, string DistricId, string WardId, string idService = null)
         {
             try
             {
                 var oriAddress = Address.Replace(" ", "");
-
-                var obj = (from x in _db.Hotels.AsNoTracking()
-                           where x.Address.Replace(" ", "") == oriAddress
-                           && x.ProvinceId == Guid.Parse(ProvinceId)
-                           && x.DistrictId == Guid.Parse(DistricId)
-                           && x.WardId == Guid.Parse(WardId)
-                           select x).FirstOrDefault();
-                if (obj != null)
+                if (!string.IsNullOrEmpty(idService)) // update
                 {
-                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    Guid id = Guid.Parse(idService);
+                    var objOld = (from x in _db.Hotels.AsNoTracking()
+                               where x.IdHotel == id
+                               select x).FirstOrDefault();
+                    var addressOld = objOld.Address.Replace(" ", "");
+                    var provinceIdOld = objOld.ProvinceId;
+                    var districIdOld = objOld.DistrictId;
+                    var wardIdOld = objOld.WardId;
+                    if (Address != addressOld || Guid.Parse(ProvinceId) != provinceIdOld || Guid.Parse(DistricId) != districIdOld || Guid.Parse(WardId) != wardIdOld)
+                    {
+                        var obj = (from x in _db.Hotels.AsNoTracking()
+                                   where (x.Address.Replace(" ", "") == oriAddress && x.Address.Replace(" ", "") != addressOld)
+                                   && (x.ProvinceId == Guid.Parse(ProvinceId) && x.ProvinceId != provinceIdOld)
+                                   && (x.DistrictId == Guid.Parse(DistricId) && x.DistrictId != districIdOld)
+                                   && (x.WardId == Guid.Parse(WardId) && x.WardId != wardIdOld)
+                                   select x).FirstOrDefault();
+                        if (obj != null)
+                        {
+                            return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                        }
+                    }
                 }
+                else // create
+                {
+                    var obj = (from x in _db.Hotels.AsNoTracking()
+                               where x.Address.Replace(" ", "") == oriAddress
+                               && x.ProvinceId == Guid.Parse(ProvinceId)
+                               && x.DistrictId == Guid.Parse(DistricId)
+                               && x.WardId == Guid.Parse(WardId)
+                               select x).FirstOrDefault();
+                    if (obj != null)
+                    {
+                        return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    }
+                }
+              
                 return res;
 
             }
@@ -375,22 +441,69 @@ namespace Travel.Data.Repositories
 
             }
         }
-        private Response CheckAddressPlace(string Address, string ProvinceId, string DistricId, string WardId)
+        private Response CheckAddressPlace(string Address, string ProvinceId, string DistricId, string WardId, string idService = null)
         {
             try
             {
-                var oriAddress = Address.Replace(" ", "");
 
-                var obj = (from x in _db.Places.AsNoTracking()
-                           where x.Address.Replace(" ", "") == oriAddress
-                           && x.ProvinceId == Guid.Parse(ProvinceId)
-                           && x.DistrictId == Guid.Parse(DistricId)
-                           && x.WardId == Guid.Parse(WardId)
-                           select x).FirstOrDefault();
-                if (obj != null)
+                var oriAddress = Address.Replace(" ", "");
+                if (!string.IsNullOrEmpty(idService)) // update
                 {
-                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    Guid id = Guid.Parse(idService);
+                    var objOld = (from x in _db.Places.AsNoTracking()
+                                  where x.IdPlace == id
+                                  select x).FirstOrDefault();
+                    var addressOld = objOld.Address.Replace(" ", "");
+                    var provinceIdOld = objOld.ProvinceId;
+                    var districIdOld = objOld.DistrictId;
+                    var wardIdOld = objOld.WardId;
+                    if (Address != addressOld || Guid.Parse(ProvinceId) != provinceIdOld || Guid.Parse(DistricId) != districIdOld || Guid.Parse(WardId) != wardIdOld)
+                    {
+                        var obj = (from x in _db.Places.AsNoTracking()
+                                   where (x.Address.Replace(" ", "") == oriAddress && x.Address.Replace(" ", "") != addressOld)
+                                   && (x.ProvinceId == Guid.Parse(ProvinceId) && x.ProvinceId != provinceIdOld)
+                                   && (x.DistrictId == Guid.Parse(DistricId) && x.DistrictId != districIdOld)
+                                   && (x.WardId == Guid.Parse(WardId) && x.WardId != wardIdOld)
+                                   select x).FirstOrDefault();
+                        if (obj != null)
+                        {
+                            return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                        }
+                    }
                 }
+                else // create
+                {
+                    var obj = (from x in _db.Places.AsNoTracking()
+                               where x.Address.Replace(" ", "") == oriAddress
+                               && x.ProvinceId == Guid.Parse(ProvinceId)
+                               && x.DistrictId == Guid.Parse(DistricId)
+                               && x.WardId == Guid.Parse(WardId)
+                               select x).FirstOrDefault();
+                    if (obj != null)
+                    {
+                        return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    }
+                }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+               
+
+                
                 return res;
 
             }
@@ -401,24 +514,50 @@ namespace Travel.Data.Repositories
 
             }
         }
-        private Response CheckAddressRestaurant(string Address, string ProvinceId, string DistricId, string WardId)
+        private Response CheckAddressRestaurant(string Address, string ProvinceId, string DistricId, string WardId, string idService = null)
         {
             try
             {
-                var oriAddress = Address.Replace(" ", "");
 
-                var obj = (from x in _db.Restaurants.AsNoTracking()
-                           where x.Address.Replace(" ", "") == oriAddress
-                           && x.ProvinceId == Guid.Parse(ProvinceId)
-                           && x.DistrictId == Guid.Parse(DistricId)
-                           && x.WardId == Guid.Parse(WardId)
-                           select x).FirstOrDefault();
-                if (obj != null)
+                var oriAddress = Address.Replace(" ", "");
+                if (!string.IsNullOrEmpty(idService)) // update
                 {
-                    return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    Guid id = Guid.Parse(idService);
+                    var objOld = (from x in _db.Restaurants.AsNoTracking()
+                                  where x.IdRestaurant == id
+                                  select x).FirstOrDefault();
+                    var addressOld = objOld.Address.Replace(" ", "");
+                    var provinceIdOld = objOld.ProvinceId;
+                    var districIdOld = objOld.DistrictId;
+                    var wardIdOld = objOld.WardId;
+                    if (Address != addressOld || Guid.Parse(ProvinceId) != provinceIdOld || Guid.Parse(DistricId) != districIdOld || Guid.Parse(WardId) != wardIdOld)
+                    {
+                        var obj = (from x in _db.Restaurants.AsNoTracking()
+                                   where (x.Address.Replace(" ", "") == oriAddress && x.Address.Replace(" ", "") != addressOld)
+                                   && (x.ProvinceId == Guid.Parse(ProvinceId) && x.ProvinceId != provinceIdOld)
+                                   && (x.DistrictId == Guid.Parse(DistricId) && x.DistrictId != districIdOld)
+                                   && (x.WardId == Guid.Parse(WardId) && x.WardId != wardIdOld)
+                                   select x).FirstOrDefault();
+                        if (obj != null)
+                        {
+                            return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                        }
+                    }
+                }
+                else // create
+                {
+                    var obj = (from x in _db.Restaurants.AsNoTracking()
+                               where x.Address.Replace(" ", "") == oriAddress
+                               && x.ProvinceId == Guid.Parse(ProvinceId)
+                               && x.DistrictId == Guid.Parse(DistricId)
+                               && x.WardId == Guid.Parse(WardId)
+                               select x).FirstOrDefault();
+                    if (obj != null)
+                    {
+                        return Ultility.Responses("Địa chỉ [" + Address + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "address");
+                    }
                 }
                 return res;
-
             }
             catch (Exception e)
             {
@@ -426,6 +565,9 @@ namespace Travel.Data.Repositories
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
 
             }
+
+
+         
         }
 
         public Response CreateHotel(CreateHotelViewModel input, string emailUser)

@@ -52,35 +52,64 @@ namespace Travel.Data.Repositories
                     {
                         idEmployee = Guid.NewGuid().ToString();
                     }
-
                     var nameEmployee = PrCommon.GetString("nameEmployee", frmData);
                     if (String.IsNullOrEmpty(nameEmployee))
                     {
 
                     }
-
                     var email = PrCommon.GetString("email", frmData);
-                    if (!String.IsNullOrEmpty(email) && isUpdate == false)
-                    {
-                        var check = CheckEmailEmployee(email);
-                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
-                        {
-                            _message = check.Notification;
-                            return string.Empty;
-                        }
-                    }
-
-
+                  
                     var phone = PrCommon.GetString("phone", frmData);
-                    if (!String.IsNullOrEmpty(phone) && isUpdate == false)
+                  
+                    #region validate
+                    if (isUpdate)
                     {
-                        var check = CheckPhoneEmployee(phone);
-                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        if (!String.IsNullOrEmpty(email))
                         {
-                            _message = check.Notification;
-                            return string.Empty;
+                            var check = CheckEmailEmployee(email,idEmployee);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                        if (!String.IsNullOrEmpty(phone))
+                        {
+                            var check = CheckPhoneEmployee(phone, idEmployee);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
                         }
                     }
+                    else
+                    {
+                        if (!String.IsNullOrEmpty(email))
+                        {
+                            var check = CheckEmailEmployee(email);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                        if (!String.IsNullOrEmpty(phone))
+                        {
+                            var check = CheckPhoneEmployee(phone);
+                            if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                            {
+                                _message = check.Notification;
+                                return string.Empty;
+                            }
+                        }
+                    }
+
+
+                    #endregion
+
+
+
 
                     var roleId = PrCommon.GetString("roleId", frmData);
                     if (String.IsNullOrEmpty(roleId))
@@ -622,17 +651,39 @@ namespace Travel.Data.Repositories
             }
         }
 
-        public Response CheckEmailEmployee(string email)
+        public Response CheckEmailEmployee(string email, string idEmployee = null)
         {
             try
             {
-                var emp = (from x in _db.Employees.AsNoTracking()
-                           where x.IsDelete == false && x.Email == email select x).Count();
-                if (emp > 0)
+                // update
+                if (!string.IsNullOrEmpty(idEmployee))
                 {
-                    return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "email");
+                    Guid id = Guid.Parse(idEmployee);
+                    string oldEmail = (from x in _db.Employees.AsNoTracking()
+                                       where x.IdEmployee == id
+                                       select x).FirstOrDefault().Email;
+                    if (email != oldEmail) // có thay đổi sdt
+                    {
+                        var obj = (from x in _db.Employees where x.Email != oldEmail && x.Email == email select x).Count();
+                        if (obj > 0)
+                        {
+                            return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "email");
+                        }
+                    }
+                }
+                else
+                {
+                    var emp = (from x in _db.Employees.AsNoTracking()
+                               where x.IsDelete == false && x.Email == email
+                               select x).Count();
+                    if (emp > 0)
+                    {
+                        return Ultility.Responses("[" + email + "] này đã được đăng ký !", Enums.TypeCRUD.Validation.ToString(), description: "email");
+                    }
                 }
                 return res;
+
+
             }
             catch (Exception e)
             {

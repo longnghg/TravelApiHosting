@@ -39,26 +39,54 @@ namespace Travel.Data.Repositories
                 {
                 }
                 var nameRole = PrCommon.GetString("nameRole", frmData);
-                if (!String.IsNullOrEmpty(nameRole))
-                {
-                    var check = CheckSameRole(nameRole, "nameRole");
-                    if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
-                    {
-                        _message = check.Notification;
-                        return string.Empty;
-                    }
-                }
+              
 
                 var description = PrCommon.GetString("description", frmData);
-                if (!String.IsNullOrEmpty(description))
+               
+                #region validate
+                if (isUpdate)
                 {
-                    var check = CheckSameRole(description, "description");
-                    if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                    if (!String.IsNullOrEmpty(nameRole))
                     {
-                        _message = check.Notification;
-                        return string.Empty;
+                        var check = CheckSameRole(nameRole, "nameRole",idRole);
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        {
+                            _message = check.Notification;
+                            return string.Empty;
+                        }
+                    }
+                    if (!String.IsNullOrEmpty(description))
+                    {
+                        var check = CheckSameRole(description, "description" , idRole);
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        {
+                            _message = check.Notification;
+                            return string.Empty;
+                        }
                     }
                 }
+                else
+                {
+                    if (!String.IsNullOrEmpty(nameRole))
+                    {
+                        var check = CheckSameRole(nameRole, "nameRole");
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        {
+                            _message = check.Notification;
+                            return string.Empty;
+                        }
+                    }
+                    if (!String.IsNullOrEmpty(description))
+                    {
+                        var check = CheckSameRole(description, "description");
+                        if (check.Notification.Type == Enums.TypeCRUD.Validation.ToString() || check.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                        {
+                            _message = check.Notification;
+                            return string.Empty;
+                        }
+                    }
+                }
+                #endregion
                 if (isUpdate)
                 {
                     UpdateRoleViewModel objUpdate = new UpdateRoleViewModel();
@@ -352,28 +380,66 @@ namespace Travel.Data.Repositories
             }
             return false;
         }
-        private Response CheckSameRole(string input, string description)
+        private Response CheckSameRole(string input, string description, string idRole = null)
         {
             try
             {
                 string oriRoleInput = Ultility.removeVietnameseSign(input.ToLower().Replace(" ", ""));
-                var obj = _db.Roles.Where(delegate (Role role)
+
+
+                if (!string.IsNullOrEmpty(idRole)) // update
                 {
-                    if (Ultility.removeVietnameseSign(role.NameRole.ToLower().Replace(" ", "")).Contains(oriRoleInput))
+                    int id = int.Parse(idRole);
+                    var oldRole = (from x in _db.Roles.AsNoTracking()
+                                   where x.IdRole == id
+                                   select x).FirstOrDefault();
+                    string oldRoleName = oldRole.NameRole;
+                    string oldRoleDescription = oldRole.Description;
+
+                    if (oldRoleName != input || oldRoleDescription !=input) // có thay đổi  
                     {
-                        return true;
+                        var obj = _db.Roles.Where(delegate (Role role)
+                        {
+                            if (Ultility.removeVietnameseSign(role.NameRole.ToLower().Replace(" ", "")).Contains(oriRoleInput) && role.NameRole != oldRoleName)
+                            {
+                                return true;
+                            }
+                            if (Ultility.removeVietnameseSign(role.Description.ToLower().Replace(" ", "")).Contains(oriRoleInput) && role.Description != oldRoleDescription)
+                            {
+                                return true;
+                            }
+                            return false;
+                        });
+                        if (obj.FirstOrDefault() != null)
+                        {
+                            return Ultility.Responses("[" + input + "] này đã tồn tại !", Enums.TypeCRUD.Validation.ToString(), description: description);
+                        }
                     }
-                    if (Ultility.removeVietnameseSign(role.Description.ToLower().Replace(" ", "")).Contains(oriRoleInput))
-                    {
-                        return true;
-                    }
-                    return false;
-                });
-                if (obj.FirstOrDefault() != null)
+                }
+                else // create
                 {
-                    return Ultility.Responses("[" + input + "] này đã tồn tại !", Enums.TypeCRUD.Validation.ToString(), description: description);
+                    var obj = _db.Roles.Where(delegate (Role role)
+                    {
+                        if (Ultility.removeVietnameseSign(role.NameRole.ToLower().Replace(" ", "")).Contains(oriRoleInput))
+                        {
+                            return true;
+                        }
+                        if (Ultility.removeVietnameseSign(role.Description.ToLower().Replace(" ", "")).Contains(oriRoleInput))
+                        {
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (obj.FirstOrDefault() != null)
+                    {
+                        return Ultility.Responses("[" + input + "] này đã tồn tại !", Enums.TypeCRUD.Validation.ToString(), description: description);
+                    }
                 }
                 return res;
+
+
+
+
             }
             catch (Exception e)
             {
