@@ -224,7 +224,6 @@ namespace Travel.Data.Repositories
                 var unixTimeOneDay = 86400000;
                 var carOfSchedule = (from x in _db.Schedules.AsNoTracking()
                                      where x.IdSchedule == idSchedule
-                                     && x.Isdelete == false
                                      select x).FirstOrDefault();
                 var fromDateCurrentUpdate = carOfSchedule.DepartureDate;
                 var toDateCurrentUpdate = carOfSchedule.ReturnDate;
@@ -712,5 +711,36 @@ namespace Travel.Data.Repositories
             }
         }
 
+        public Response ListCarAndTourGuideFree(long fromDate, long toDate)
+        {
+            var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+            var listSchedulePreparing = (from x in _db.Schedules.AsNoTracking()
+                                     where  x.DepartureDate >= fromDate
+                                     && x.ReturnDate <= toDate
+                                     && x.Isdelete == false
+                                     && x.Approve == (int)Enums.ApproveStatus.Approved
+                                     select new {Car = x.CarId , Employee = x.EmployeeId }).ToList();
+            var lsIdCar = new List<Guid>();
+            var lsIdEmployee = new List<Guid>();
+            foreach (var item in listSchedulePreparing)
+            {
+                lsIdCar.Add(item.Car);
+                lsIdEmployee.Add(item.Employee);
+            }
+
+            var lsCarFree = (from x in _db.Cars.AsNoTracking()
+                             where !lsIdCar.Contains(x.IdCar)
+                             select x).ToList(); ;
+            var lsEmployeeFree = (from x in _db.Employees.AsNoTracking()
+                                  where !lsIdEmployee.Contains(x.IdEmployee)
+                                  select x).ToList();
+            var result = new
+            {
+                ListCarFree = lsCarFree,
+                ListEmployeeFree = lsEmployeeFree
+            };
+            return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
+
+        }
     }
 }

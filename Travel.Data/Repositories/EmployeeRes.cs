@@ -855,7 +855,6 @@ namespace Travel.Data.Repositories
                 var unixTimeOneDay = 86400000;
                 var employeeOfSchedule = (from x in _db.Schedules.AsNoTracking()
                                      where x.IdSchedule == idSchedule
-                                     && x.Isdelete == false
                                      select x).FirstOrDefault();
                 var fromDateCurrentUpdate = employeeOfSchedule.DepartureDate;
                 var toDateCurrentUpdate = employeeOfSchedule.ReturnDate;

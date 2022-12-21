@@ -155,6 +155,13 @@ namespace TravelApi.Controllers
             res = _car.GetListCarHaveSchedule(idCar, pageIndex, pageSize);
             return Ok(res);
         }
-        
+        [HttpGet]
+        [Authorize]
+        [Route("list-car-and-tour-guide-free")]
+        public object ListCarAndTourGuideFree(long from, long to)
+        {
+            res = _car.ListCarAndTourGuideFree(from,to);
+            return Ok(res);
+        }
     }
 }

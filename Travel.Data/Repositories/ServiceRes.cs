@@ -1449,7 +1449,8 @@ namespace Travel.Data.Repositories
                 place.PriceTicket = input.PriceTicket;
                 place.ProvinceId = input.ProvinceId;
                 place.DistrictId = input.DistrictId;
-                place.WardId = input.IdPlace;
+
+                place.WardId = input.WardId;
                 #endregion
                 UpdateDatabase<Place>(place);
                 SaveChange();
