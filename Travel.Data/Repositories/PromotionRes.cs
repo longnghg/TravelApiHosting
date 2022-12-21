@@ -765,12 +765,10 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                
-                var totalResult = 0;
 
-                // value 0
                 var query = (from x in _db.Promotions.AsNoTracking()
-                             where x.Value == 0
+                             where x.IdPromotion == 1
+                                   
                              select x);
 
 
@@ -779,15 +777,19 @@ namespace Travel.Data.Repositories
                 {
                     return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), query.ToList());
                 }
-                query = (from x in _db.Promotions.AsNoTracking()
+                var query1 = (from x in _db.Promotions.AsNoTracking()
                          where
                          x.IsDelete == false &&
                          x.IdPromotion != -2 &&
                          x.IsTempdata == false &&
+                          x.FromDate >= fromDate &&
+                          x.ToDate <= toDate &&
                          x.Approve == Convert.ToInt16(Enums.ApproveStatus.Approved)
                          select x);
 
-                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), query.ToList());
+                var queryConcat = query1.Concat(query);
+
+                return Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), queryConcat.ToList());
 
 
                 //var queryvalue0 = (from x in queryListPromotion
