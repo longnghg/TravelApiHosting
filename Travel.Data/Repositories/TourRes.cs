@@ -53,7 +53,7 @@ namespace Travel.Data.Repositories
         {
             _db = db;
             message = new Notification();
-            dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now.AddMinutes(-3));
+            dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
             _notification = notification;
             _log = log;
             _cache = cache;
@@ -957,10 +957,10 @@ namespace Travel.Data.Repositories
             try
             {
                 #region check cache
-                if (_cache.Get<Response>($"tour") != null) // có cache
-                {
-                    return _cache.Get<Response>($"tour");
-                }
+                //if (_cache.Get<Response>($"tour") != null) // có cache
+                //{
+                //    return _cache.Get<Response>($"tour");
+                //}
                 #endregion
                 var list = await (from x in _db.Tour.AsNoTracking()
                                   where x.Rating >= 9
@@ -982,6 +982,8 @@ namespace Travel.Data.Repositories
                                                    where s.TourId == x.IdTour
                                                    && s.EndDate >= dateTimeNow
                                                    && s.BeginDate <= dateTimeNow
+                                                   && s.Approve == Convert.ToInt16(Enums.ApproveStatus.Approved)
+                                                   && s.IsTempData == false
                                                    && s.Status == (int)Enums.StatusSchedule.Free
                                                    orderby s.DepartureDate
                                                    select new Schedule

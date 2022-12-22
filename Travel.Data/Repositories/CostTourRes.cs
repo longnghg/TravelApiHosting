@@ -223,7 +223,7 @@ namespace Travel.Data.Repositories
                 schedule.AdditionalPrice = cost.PriceHotelSR;
                 schedule.AdditionalPriceHoliday = (cost.PriceHotelSR + (cost.PriceHotelSR * (holidayPercent / 100)));
                 schedule.TotalCostTourNotService = cost.TotalCostTourNotService;
-
+                schedule.IsHoliday = cost.IsHoliday;
                 // số ngày đi của tour
                 int countDay = Convert.ToInt16(Ultility.CountDay(input.DepartureDate, input.ReturnDate));
                 #region test
@@ -358,7 +358,7 @@ namespace Travel.Data.Repositories
                 schedule.AdditionalPrice = cost.PriceHotelSR;
                 schedule.AdditionalPriceHoliday = (cost.PriceHotelSR + (cost.PriceHotelSR * (holidayPercent / 100)));
                 schedule.TotalCostTourNotService = cost.TotalCostTourNotService;
-
+                schedule.IsHoliday = cost.IsHoliday;
                 // số ngày đi của tour
                 int countDay = Convert.ToInt16(Ultility.CountDay(input.DepartureDate, input.ReturnDate));
                 #region test

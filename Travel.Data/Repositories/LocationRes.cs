@@ -169,7 +169,7 @@ namespace Travel.Data.Repositories
                 {
                     if (!String.IsNullOrEmpty(nameWard))
                     {
-                        bool check = CheckSameNameDistrict(nameWard, idWard);
+                        bool check = CheckSameNameWard(nameWard, idWard);
                         if (check)
                         {
                             _message = Ultility.Responses($"{nameWard} đã tồn tại !", Enums.TypeCRUD.Validation.ToString()).Notification;

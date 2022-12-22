@@ -602,6 +602,7 @@ namespace Travel.Data.Repositories
                             && s.Status == (int)Enums.StatusSchedule.Free
                             && s.MaxCapacity > s.QuantityCustomer
                             && s.IsTempData == false
+                            && s.Approve == (int)Enums.ApproveStatus.Approved
                             orderby s.DepartureDate
                             select new Schedule
                             {
@@ -1077,8 +1078,8 @@ namespace Travel.Data.Repositories
                     var list = await (from x in _db.Schedules
                                       where x.EndDate > dateTimeNow
                                       && x.Isdelete == false
-                                       && x.MaxCapacity > x.QuantityCustomer
-
+                                      && x.MaxCapacity > x.QuantityCustomer
+                                      && x.IsTempData == false
                                       && x.Approve == (int)Enums.ApproveStatus.Approved
                                       select x
                                       ).ToListAsync();
@@ -1448,8 +1449,9 @@ namespace Travel.Data.Repositories
 
                 var dateTimeNow = GetDateTimeNow();
                 var list = (from s in _db.Schedules.AsNoTracking()
-                            where s.Isdelete == false &&
-                      s.Approve == (int)Enums.ApproveStatus.Approved
+                            where s.Isdelete == false 
+                      && s.IsTempData == false
+                      && s.Approve == (int)Enums.ApproveStatus.Approved
                       && s.PromotionId == 1
                       && s.EndDate >= dateTimeNow
                       && s.BeginDate <= dateTimeNow
@@ -1542,6 +1544,7 @@ namespace Travel.Data.Repositories
                 var flashSaleDay = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(Ultility.GetDateZeroTime(DateTime.Now.AddDays(3))); // sau này gắn config
                 var list = await (from s in _db.Schedules.AsNoTracking()
                                   where s.Isdelete == false
+                                  && s.IsTempData == false
                                   && s.Approve == (int)Enums.ApproveStatus.Approved
                                   && s.EndDate >= dateTimeNow
                                   && s.EndDate <= flashSaleDay
@@ -1624,8 +1627,9 @@ namespace Travel.Data.Repositories
             {
                 var dateTimeNow = GetDateTimeNow();
                 var list = await (from s in _db.Schedules.AsNoTracking()
-                                  where s.Isdelete == false &&
-                                  s.Approve == (int)Enums.ApproveStatus.Approved
+                                  where s.Isdelete == false
+                                  && s.IsTempData == false
+                                  && s.Approve == (int)Enums.ApproveStatus.Approved
                                   && s.PromotionId > 1
                                   && s.EndDate >= dateTimeNow
                                   && s.BeginDate <= dateTimeNow
@@ -1899,7 +1903,7 @@ namespace Travel.Data.Repositories
                             schedule.DeparturePlace = scheduleTemp.DeparturePlace;
                             schedule.Description = scheduleTemp.Description;
                             schedule.EmployeeId = scheduleTemp.EmployeeId;
-                            schedule.BeginDate = scheduleTemp.EndDate;
+                            schedule.BeginDate = scheduleTemp.BeginDate;
                             schedule.EndDate = scheduleTemp.EndDate;
                             schedule.IsHoliday = scheduleTemp.IsHoliday;
                             schedule.MaxCapacity = scheduleTemp.MaxCapacity;
@@ -1918,6 +1922,7 @@ namespace Travel.Data.Repositories
                             schedule.PriceAdultHoliday = scheduleTemp.PriceAdultHoliday;
                             schedule.PriceChildHoliday = scheduleTemp.PriceChildHoliday;
                             schedule.PriceBabyHoliday = scheduleTemp.PriceBabyHoliday;
+                            schedule.IsHoliday = scheduleTemp.IsHoliday;
 
                             costTour.Breakfast = CostTourTemp.Breakfast;
                             costTour.Water = CostTourTemp.Water;
@@ -2149,7 +2154,7 @@ namespace Travel.Data.Repositories
                         schedule.DeparturePlace = scheduleTemp.DeparturePlace;
                         schedule.Description = scheduleTemp.Description;
                         schedule.EmployeeId = scheduleTemp.EmployeeId;
-                        schedule.BeginDate = scheduleTemp.EndDate;
+                        schedule.BeginDate = scheduleTemp.BeginDate;
                         schedule.EndDate = scheduleTemp.EndDate;
                         schedule.IsHoliday = scheduleTemp.IsHoliday;
                         schedule.MaxCapacity = scheduleTemp.MaxCapacity;
@@ -2167,7 +2172,7 @@ namespace Travel.Data.Repositories
                         schedule.PriceAdultHoliday = scheduleTemp.PriceAdultHoliday;
                         schedule.PriceChildHoliday = scheduleTemp.PriceChildHoliday;
                         schedule.PriceBabyHoliday = scheduleTemp.PriceBabyHoliday;
-
+                        schedule.IsHoliday = scheduleTemp.IsHoliday;
 
                         costTour.Breakfast = CostTourTemp.Breakfast;
                         costTour.Water = CostTourTemp.Water;
@@ -3381,9 +3386,10 @@ namespace Travel.Data.Repositories
                                   where s.Isdelete == false
                                    && s.EndDate > dateTimeNow
                                    && s.BeginDate <= dateTimeNow
-                                   && s.Approve == (int)Enums.ApproveStatus.Approved &&
-                                   s.DeparturePlace.ToLower().Contains(keywords.KwFrom) &&
-                                   s.Tour.ToPlace.ToLower().Contains(keywords.KwTo)
+                                   && s.IsTempData == false
+                                   && s.Approve == (int)Enums.ApproveStatus.Approved
+                                   && s.DeparturePlace.ToLower().Contains(keywords.KwFrom)
+                                   && s.Tour.ToPlace.ToLower().Contains(keywords.KwTo)
                                   select new Schedule
                                   {
                                       Alias = s.Alias,
