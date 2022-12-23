@@ -12,6 +12,8 @@ namespace Travel.Data.Interfaces
 {
     public interface ISchedule
     {
+        Response DeleteImmediately(string idSchedule, Guid idUser);
+
         string CheckBeforSave(JObject frmData, ref Notification _message, bool isUpdate = false);
         Response Gets();
         Response Create(CreateScheduleViewModel input, string emailUser);

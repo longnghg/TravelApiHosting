@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using PrUtility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -27,14 +29,15 @@ namespace Travel.Data.Repositories
         private readonly ILog _log;
         private INotification _notification;
         private readonly ICache _cache;
-
-        public ScheduleRes(TravelContext db, INotification notification, ILog log, ICache cache)
+        private IConfiguration _config;
+        public ScheduleRes(TravelContext db, INotification notification, ILog log, ICache cache, IConfiguration config)
         {
             _db = db;
             _log = log;
             message = new Notification();
             _notification = notification;
             _cache = cache;
+            _config = config;
         }
 
         private Employee GetCurrentUser(Guid IdUserModify)
@@ -1817,6 +1820,19 @@ namespace Travel.Data.Repositories
         {
             try
             {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                #region check schedule is selling
+                var scheduleIsSelling = (from x in _db.Schedules.AsNoTracking()
+                                         where x.IdSchedule ==  idSchedule
+                                         && x.Isdelete == false
+                                         && x.Approve == (int)Enums.ApproveStatus.Approved
+                                         && x.BeginDate <= dateTimeNow
+                                         select x).FirstOrDefault();
+                if (scheduleIsSelling != null)
+                {
+                    return Ultility.Responses("Đã quá hạn xóa !", Enums.TypeCRUD.Warning.ToString());
+                }
+                #endregion
                 var schedule = (from x in _db.Schedules.AsNoTracking()
                                 where x.IdSchedule == idSchedule
                                 select x).FirstOrDefault();
@@ -2263,6 +2279,19 @@ namespace Travel.Data.Repositories
         {
             try
             {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                #region check schedule is selling
+                var scheduleIsSelling = (from x in _db.Schedules.AsNoTracking()
+                                         where x.IdSchedule == input.IdSchedule
+                                         && x.Isdelete == false
+                                         && x.Approve == (int)Enums.ApproveStatus.Approved
+                                         && x.BeginDate  <= dateTimeNow
+                                         select x).FirstOrDefault();
+                if (scheduleIsSelling != null)
+                {
+                    return Ultility.Responses("Đã quá hạn chỉnh sửa !", Enums.TypeCRUD.Warning.ToString());
+                }
+                #endregion
                 var userLogin = (from x in _db.Employees.AsNoTracking()
                                  where x.IdEmployee == input.IdUserModify
                                  select x).FirstOrDefault();
@@ -4200,5 +4229,65 @@ namespace Travel.Data.Repositories
         }
 
 
+        private async Task<List<TourBooking>> CallServiceGetListTourBookingByIdSchedule(string idSchedule)
+        {
+
+            using (var client = new HttpClient())
+            {
+                var urlService = _config["UrlService"].ToString();
+                client.BaseAddress = new Uri($"{urlService}");
+                client.DefaultRequestHeaders.Accept.Clear();
+                HttpResponseMessage response =  await client.GetAsync($"api/tourbooking/list-tour-booking-by-idschedule-s?idSchedule={idSchedule}");
+                if (response.IsSuccessStatusCode)
+                {
+                    JsonSerializerOptions options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    string data = await response.Content.ReadAsStringAsync();
+                    return JsonSerializer.Deserialize<List<TourBooking>>(data, options);
+                }
+
+            }
+            return null;
+        }
+        public Response DeleteImmediately(string idSchedule, Guid idUser)
+        {
+            var employeeAdmin = (from x in _db.Employees.AsNoTracking()
+                                 where x.IdEmployee == idUser
+                                 select x).FirstOrDefault();
+            if (employeeAdmin.RoleId != (int)Enums.TitleRole.Admin)
+            {
+                return Ultility.Responses($"Không có quyền thực thi hành động này !", Enums.TypeCRUD.Warning.ToString());
+            }
+           var lsTourBooking = CallServiceGetListTourBookingByIdSchedule(idSchedule).Result;
+            var listEmailCustomer = "";
+            foreach (var item in lsTourBooking)
+            {
+                listEmailCustomer += $"{listEmailCustomer},{item.Email}"; 
+            }
+            listEmailCustomer = listEmailCustomer.Substring(1, listEmailCustomer.Length - 1);
+
+            // gửi mail xin lỗi tất cả khách hàng trong tourbooking
+
+            #region sendMail
+
+            var emailSend = _config["emailSend"];
+            var keySecurity = _config["keySecurity"];
+            var stringHtml = Ultility.getHtmlBookingTicket($" <br Xin lỗi quý khách về sự bất tiện này", "Thanh toán thành công", "BookingNo");
+
+            Ultility.sendEmail(stringHtml, listEmailCustomer, "Thanh toán dịch vụ", emailSend, keySecurity);
+            #endregion
+
+            // cập nhật lại trạng thái xóa cho idSchedule
+            var schedule = (from x in _db.Schedules.AsNoTracking()
+                            where x.IdSchedule == idSchedule
+                            select x).FirstOrDefault();
+            schedule.Isdelete = true;
+            schedule.Status = (int)Enums.StatusSchedule.Busy;
+            UpdateDatabase(schedule);
+            SaveChange();
+            return Ultility.Responses($"", Enums.TypeCRUD.Success.ToString());
+        }
     }
 }

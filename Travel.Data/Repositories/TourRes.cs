@@ -463,6 +463,22 @@ namespace Travel.Data.Repositories
         {
             try
             {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                #region check schedule is selling
+                var tourIsHaveSchedule = (from x in _db.Tour.AsNoTracking()
+                                          join s in _db.Schedules.AsNoTracking()
+                                          on x.IdTour equals s.TourId
+                                         where x.IdTour == input.IdTour
+                                         && x.IsDelete == false
+                                         && x.ApproveStatus == (int)Enums.ApproveStatus.Approved
+                                         && s.BeginDate <= dateTimeNow
+                                         select x).FirstOrDefault();
+                if (tourIsHaveSchedule != null)
+                {
+                    return Ultility.Responses("Tour đang được đăng bán, không thể thay đổi!", Enums.TypeCRUD.Warning.ToString());
+                }
+                #endregion
+
                 Tour tour = (from x in _db.Tour.AsNoTracking()
                              where x.IdTour == input.IdTour
                              && x.IsDelete == false
@@ -525,6 +541,21 @@ namespace Travel.Data.Repositories
         {
             try
             {
+                var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                #region check schedule is selling
+                var tourIsHaveSchedule = (from x in _db.Tour.AsNoTracking()
+                                          join s in _db.Schedules.AsNoTracking()
+                                          on x.IdTour equals s.TourId
+                                          where x.IdTour == idTour
+                                          && x.IsDelete == false
+                                          && x.ApproveStatus == (int)Enums.ApproveStatus.Approved
+                                          && s.BeginDate <= dateTimeNow
+                                          select x).FirstOrDefault();
+                if (tourIsHaveSchedule != null)
+                {
+                    return Ultility.Responses("Tour đang được đăng bán, không thể xóa !", Enums.TypeCRUD.Warning.ToString());
+                }
+                #endregion
                 var tour = (from x in _db.Tour.AsNoTracking()
                             where x.IdTour == idTour
                             select x).FirstOrDefault();

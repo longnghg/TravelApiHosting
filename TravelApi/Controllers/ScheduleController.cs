@@ -26,7 +26,8 @@ namespace TravelApi.Controllers
     [ApiController]
     public class ScheduleController : ControllerBase
     {
-        private const string Merchant = "-2";
+        private const string Merchant = "-2,-1";
+        private const string QLCB = "1,-1";
         private readonly ISchedule _schedule;
         private Notification message;
         private Response res;
@@ -267,7 +268,14 @@ namespace TravelApi.Controllers
             res = _schedule.SearchScheduleWaiting(frmData, idTour);
             return Ok(res);
         }
-
+        [HttpDelete]
+        [Authorize(Roles= QLCB)]
+        [Route("immediately-schedule")]
+        public object DeleteImmediately(string idSchedule,Guid idUser)
+        {
+            res = _schedule.DeleteImmediately(idSchedule, idUser);
+            return Ok(res);
+        }
         [HttpPost]
         [Authorize(Roles = Merchant)]
         [Route("cus-search-schedule-filter")]
