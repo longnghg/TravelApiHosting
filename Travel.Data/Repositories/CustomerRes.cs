@@ -741,7 +741,19 @@ namespace Travel.Data.Repositories
 
             }
         }
+
+
         #endregion
+
+
+
+        public async Task<Guid> GetCustomerIdByPhone(string phone)
+        {
+            var customer = await (from x in _db.Customers.AsNoTracking()
+                            where x.Phone == phone
+                            select x.IdCustomer).FirstOrDefaultAsync();
+            return customer;
+        }
     }
 
 

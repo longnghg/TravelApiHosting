@@ -145,7 +145,13 @@ namespace TravelApi.Controllers
         {
             return await customer.UpdateScoreToCustomer(idCustomer, point);
         }
-
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("customer-by-phone-s")]
+        public async Task<Guid> GetCustomerIdByPhone(string phone)
+        {
+            return await customer.GetCustomerIdByPhone(phone);
+        }
         #endregion
     }
 }

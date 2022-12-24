@@ -25,5 +25,6 @@ namespace Travel.Data.Interfaces
         Task<bool> UpdateScoreToCustomer(Guid idCustomer, int point );
         Task<Response> UpdateBlockCustomer(Guid idCustomer, bool isBlock);
         Response Search(JObject frmData);
+        Task<Guid> GetCustomerIdByPhone(string phone);
     }
 }
