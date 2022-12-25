@@ -115,7 +115,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [AllowAnonymous]
         [Route("search-voucher")]
         public object SearchVoucher(JObject frmData)
         {
