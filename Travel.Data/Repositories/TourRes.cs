@@ -1733,7 +1733,15 @@ namespace Travel.Data.Repositories
             catch (Exception e)
             { }
         }
-
+        public void DeleteTourImme(string id)
+        {
+            var tour = (from x in _db.Tour.AsNoTracking()
+                        where x.IdTour == id
+                        select x).FirstOrDefault();
+            tour.IsDelete = true;
+            UpdateDatabase(tour);
+            SaveChange();
+        }
         public async Task<Tour> ServiceGetNameTourrByIdSchedule(string idSchedule)
         {
             var tour = await (from s in _db.Schedules.AsNoTracking()

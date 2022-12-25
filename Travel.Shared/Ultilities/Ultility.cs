@@ -618,7 +618,7 @@ namespace Travel.Shared.Ultilities
         {
             try
             {
-                string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'>Xin lỗi nhé</div>";
+                string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'>Chúng tôi rất tiếc vì tour này đang gặp vấn đề! <br/> Nếu bạn đã thanh toán bạn vui lòng liên hệ số 0901306661 để thực hiện chức năng hoàn tiền </div>";
                 return (body);
             }
             catch (Exception ex)

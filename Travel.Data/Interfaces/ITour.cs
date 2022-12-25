@@ -33,7 +33,7 @@ namespace Travel.Data.Interfaces
         Response SearchTourWaiting(JObject frmData);
         Task<Tour> GetTourByIdForPayPal(string idTour);
 
-
+        void DeleteTourImme(string id);
 
 
 

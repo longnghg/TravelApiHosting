@@ -232,7 +232,8 @@ namespace TravelApi.Controllers
                     return Ok(res);
                 }
             }
-            res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
+            _tourRes.DeleteTourImme(idTour);
+            res = Ultility.Responses("Xóa thành công, Thư xin lỗi đã gửi tới tất cả mọi người !", Enums.TypeCRUD.Success.ToString());
             return Ok(res);
         }
 
