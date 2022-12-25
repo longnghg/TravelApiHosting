@@ -18,25 +18,31 @@ namespace TravelApi.Hubs
         public override Task OnConnectedAsync()
         {
             var httpContext = Context.GetHttpContext();
-            if (httpContext != null)
+            int repeatTimes = 4;
+            for (int i = 0; i < repeatTimes; i++)
             {
-                var jwtToken = httpContext.Request.Query["access_token"];
-
-                var handler = new JwtSecurityTokenHandler();
-                if (!string.IsNullOrEmpty(jwtToken))
+                if (httpContext != null)
                 {
-                    var token = handler.ReadJwtToken(jwtToken);
-                    var tokenS = token as JwtSecurityToken;
-                    var jti = tokenS.Claims.Where(x => x.Type == "RoleId").FirstOrDefault();
+                    i = 5;
+                    var jwtToken = httpContext.Request.Query["access_token"];
 
-                    // replace email with your claim name
-                    
-                    if (jti != null && jti.Value != "")
+                    var handler = new JwtSecurityTokenHandler();
+                    if (!string.IsNullOrEmpty(jwtToken))
                     {
-                        Groups.AddToGroupAsync(Context.ConnectionId, jti.Value.ToUpper());
+                        var token = handler.ReadJwtToken(jwtToken);
+                        var tokenS = token as JwtSecurityToken;
+                        var jti = tokenS.Claims.Where(x => x.Type == "RoleId").FirstOrDefault();
+
+                        // replace email with your claim name
+
+                        if (jti != null && jti.Value != "")
+                        {
+                            Groups.AddToGroupAsync(Context.ConnectionId, jti.Value.ToUpper());
+                        }
                     }
                 }
             }
+           
             return base.OnConnectedAsync();
         }
         public async Task Block(string idUser)
