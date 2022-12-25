@@ -108,9 +108,6 @@ namespace Travel.Data.Repositories.NotifyRes
                     }
                     else
                     {
-                        var d = (from x in listByRole
-                                where x.RoleId == role
-                                 select x).ToList();
                         emp = emp.Concat((from x in listByRole
                                          where x.RoleId == role
                                           select x).ToList()).ToList();
@@ -126,20 +123,21 @@ namespace Travel.Data.Repositories.NotifyRes
                 var notifications = new List<Notifications>();
                 foreach (var item in emp)
                 {
-                    
-                    Notifications notification = new Notifications();
-                    notification.IdNotification = Guid.NewGuid();
-                    notification.Time = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
-                    notification.IsSeen = false;
-                    notification.Title = Title;
-                    notification.Content = ContentRequest;
-                    notification.Type = Type;
-                    notification.RoleId = Ultility.ConvertListInt(Roles);
-                    notification.RequestId = idEmployee;
-                    notification.ReponseId = item.IdEmployee;
-                    notifications.Add(notification);
+                    if (idEmployee != item.IdEmployee)
+                    {
+                        Notifications notification = new Notifications();
+                        notification.IdNotification = Guid.NewGuid();
+                        notification.Time = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+                        notification.IsSeen = false;
+                        notification.Title = Title;
+                        notification.Content = ContentRequest;
+                        notification.Type = Type;
+                        notification.RoleId = Ultility.ConvertListInt(Roles);
+                        notification.RequestId = idEmployee;
+                        notification.ReponseId = item.IdEmployee;
+                        notifications.Add(notification);
+                    }
                 }
-
 
                 _notifyContext.AddRange(notifications);
                 _notifyContext.SaveChanges();

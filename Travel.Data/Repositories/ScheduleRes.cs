@@ -4266,18 +4266,21 @@ namespace Travel.Data.Repositories
             {
                 listEmailCustomer += $"{listEmailCustomer},{item.Email}"; 
             }
-            listEmailCustomer = listEmailCustomer.Substring(1, listEmailCustomer.Length - 1);
+            if (lsTourBooking.Count > 0)
+            {
+                listEmailCustomer = listEmailCustomer.Substring(1, listEmailCustomer.Length - 1);
 
-            // gửi mail xin lỗi tất cả khách hàng trong tourbooking
+                // gửi mail xin lỗi tất cả khách hàng trong tourbooking
 
-            #region sendMail
+                #region sendMail
 
-            var emailSend = _config["emailSend"];
-            var keySecurity = _config["keySecurity"];
-            var stringHtml = Ultility.getHtmlBookingTicket($" <br Xin lỗi quý khách về sự bất tiện này", "Thanh toán thành công", "BookingNo");
+                var emailSend = _config["emailSend"];
+                var keySecurity = _config["keySecurity"];
+                var stringHtml = Ultility.getHtmlApologize();
 
-            Ultility.sendEmail(stringHtml, listEmailCustomer, "Thanh toán dịch vụ", emailSend, keySecurity);
-            #endregion
+                Ultility.sendEmail(stringHtml, listEmailCustomer, "Thư xin lỗi từ TRAVELROVER", emailSend, keySecurity);
+                #endregion
+            }
 
             // cập nhật lại trạng thái xóa cho idSchedule
             var schedule = (from x in _db.Schedules.AsNoTracking()
@@ -4292,8 +4295,13 @@ namespace Travel.Data.Repositories
 
         public List<string> GetListIdScheduleByIdTour(string idTour)
         {
+            var dateTimeNow = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now);
+            var approveStatus = (int)Enums.ApproveStatus.Approved;
             return (from x in _db.Schedules.AsNoTracking()
                     where x.TourId == idTour
+                    && x.Isdelete == false
+                    && x.Approve == approveStatus
+                    && x.BeginDate > dateTimeNow
                     select x.IdSchedule).ToList();
         }
     }

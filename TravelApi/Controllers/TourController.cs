@@ -232,6 +232,7 @@ namespace TravelApi.Controllers
                     return Ok(res);
                 }
             }
+            res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString());
             return Ok(res);
         }
 

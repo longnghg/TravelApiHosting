@@ -614,6 +614,18 @@ namespace Travel.Shared.Ultilities
                 return null;
             }
         }
+        public static string getHtmlApologize()
+        {
+            try
+            {
+                string body = $@"<div style='max-width: 60vw; min-height:50%; background-color: whitesmoke; padding: 50px; border-radius:20px; margin: auto'>Xin lỗi nhé</div>";
+                return (body);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
         public static string getHtml(string content, string subjectBody, string textHead)
         {
             try
