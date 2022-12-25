@@ -218,6 +218,8 @@ namespace Travel.Data.Repositories
                 createObj.MaxCapacity = Convert.ToInt16(maxCapacity);
                 createObj.Profit = int.Parse(profit);
                 createObj.IdSchedule = $"{tourId}-S{Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(DateTime.Now)}";
+                createObj.IdSchedule = createObj.IdSchedule.Replace("   ", "");
+                createObj.IdSchedule = createObj.IdSchedule.Replace(" ", "");
                 createObj.IdUserModify = Guid.Parse(idUserModify);
 
                 return JsonSerializer.Serialize(createObj);
