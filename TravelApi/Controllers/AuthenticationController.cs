@@ -60,10 +60,10 @@ namespace TravelApi.Controllers
             {
                                         new Claim("UserId",randomId.ToString()),
                                      };
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["TokenEmployee:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var token = new JwtSecurityToken(configuration["TokenEmployee:Issuer"],
-                configuration["TokenEmployee:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutesCus),
+            var token = new JwtSecurityToken(configuration["Token:Issuer"],
+                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutesCus),
                 //configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddSeconds(25),
                 signingCredentials: signIn);
 
