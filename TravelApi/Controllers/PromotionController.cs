@@ -160,7 +160,7 @@ namespace TravelApi.Controllers
         }
 
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         [Route("select-box-promotion")]
         public object SelectBoxPromotions(long fromDate, long toDate )
         {
