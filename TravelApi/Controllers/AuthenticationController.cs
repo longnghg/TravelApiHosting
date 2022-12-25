@@ -47,7 +47,7 @@ namespace TravelApi.Controllers
             authentication = _authentication;
             res = new Response();
             TimeExpiredInMinutes = Convert.ToInt16(configuration["TokenEmployee:TimeExpired"]);
-            TimeExpiredInMinutesCus = Convert.ToInt16(configuration["Token:TimeExpired"]);
+            TimeExpiredInMinutesCus = 3;//Convert.ToInt16(configuration["Token:TimeExpired"]);
 
         }
         [HttpGet("token-guess")]
