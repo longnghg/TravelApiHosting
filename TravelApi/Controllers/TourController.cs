@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Travel.Context.Models;
 using Travel.Data.Interfaces;
+using Travel.Shared.Ultilities;
 using Travel.Shared.ViewModels;
 using Travel.Shared.ViewModels.Travel.TourVM;
 using TravelApi.Hubs;
@@ -24,13 +25,15 @@ namespace TravelApi.Controllers
     public class TourController : ControllerBase
     {
         private readonly ITour _tourRes;
+        private readonly ISchedule _scheduleRes;
         private Notification message;
         private Response res;
-        private const string Merchant = "-2";
-
-        public TourController(ITour tourRes, ILog log)
+        private const string Merchant = "-2,-1";
+        private const string QLCB = "1,-1";
+        public TourController(ITour tourRes, ISchedule scheduleRes, ILog log)
         {
             _tourRes = tourRes;
+            _scheduleRes = scheduleRes;
             res = new Response();
         }
         [NonAction]
@@ -214,6 +217,23 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
 
+        [HttpDelete]
+        [Authorize(Roles = QLCB)]
+        [Route("immediately-tour")]
+        public  object ImmediatelyDelete(string idTour, Guid idUser)
+        {
+            var lsIdSchule = _scheduleRes.GetListIdScheduleByIdTour(idTour);
+            foreach (var item in lsIdSchule)
+            {
+                var result =  _scheduleRes.DeleteImmediately(item,idUser);
+                if (result.Notification.Type == Enums.TypeCRUD.Error.ToString())
+                {
+                    res = result;
+                    return Ok(res);
+                }
+            }
+            return Ok(res);
+        }
 
 
 

@@ -4289,5 +4289,12 @@ namespace Travel.Data.Repositories
             SaveChange();
             return Ultility.Responses($"", Enums.TypeCRUD.Success.ToString());
         }
+
+        public List<string> GetListIdScheduleByIdTour(string idTour)
+        {
+            return (from x in _db.Schedules.AsNoTracking()
+                    where x.TourId == idTour
+                    select x.IdSchedule).ToList();
+        }
     }
 }

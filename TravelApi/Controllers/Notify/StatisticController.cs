@@ -35,7 +35,7 @@ namespace TravelApi.Controllers.Notify
             return Ok(res);
         }
         [HttpGet]
-        [AllowAnonymous]
+        [Authorize]
         [Route("list-statistic-total-tourbooking-by-date")]
         public object GetStatisticTotalTourBooking(long fromDate, long toDate)
         {

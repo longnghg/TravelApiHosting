@@ -46,7 +46,7 @@ namespace Travel.Data.Interfaces
         Task<Response> SearchTourFilter(JObject frmData);
         Task<bool> CheckEmptyCapacity(string idSchedule, int adult, int child, int baby);
         //Response UpdatePromotionTourLastHour(DateTime datetime);
-
+        List<string> GetListIdScheduleByIdTour(string idTour);
 
         #region service call
         Task<bool> IsScheduleInPromotion(string idSchedule);
