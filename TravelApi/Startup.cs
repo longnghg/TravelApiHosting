@@ -38,11 +38,10 @@ namespace TravelApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSignalR().AddHubOptions<TravelHub>(options => options.ClientTimeoutInterval = TimeSpan.FromSeconds(10));
             services.AddSignalR(e => {
                 e.EnableDetailedErrors = true;
                 e.MaximumReceiveMessageSize = 102400000;
-            });
+            }).AddHubOptions<TravelHub>(options => options.ClientTimeoutInterval = TimeSpan.FromSeconds(10));
             services
     .AddSingleton<IUserIdProvider, ConfigUserIdProvider>();
             services.AddCors(options => {
