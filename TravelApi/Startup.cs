@@ -38,10 +38,11 @@ namespace TravelApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+
             services.AddSignalR(e => {
                 e.EnableDetailedErrors = true;
                 e.MaximumReceiveMessageSize = 102400000;
-            }).AddHubOptions<TravelHub>(options => options.ClientTimeoutInterval = TimeSpan.FromSeconds(10));
+            });
             services
     .AddSingleton<IUserIdProvider, ConfigUserIdProvider>();
             services.AddCors(options => {
@@ -53,12 +54,9 @@ namespace TravelApi
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TravelApi", Version = "v1" });
             });
             services.AddMemoryCache();
-
             services.AddDatabase(Configuration)
                 .AddRepositories();
             services.AddScoped<IVoucher, VoucherRes>();
-      
-
             //services.AddDbContext<NotificationContext>(options =>
             //        options.UseSqlServer(Configuration.GetConnectionString("notifyTravelEntities")));
 
@@ -108,10 +106,12 @@ namespace TravelApi
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHttpContextAccessor httpContextAccessor)
         {
-   
+            if (env.IsDevelopment())
+            {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "TravelApi v1"));
+            }
 
             app.UseHttpsRedirection();
 
@@ -133,6 +133,14 @@ namespace TravelApi
                 endpoints.MapHub<TravelHub>("/travelhub");
 
             });
+
+
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+
 
             // add
             Configs.GetConfigItems.HttpContextAccessor = httpContextAccessor;
