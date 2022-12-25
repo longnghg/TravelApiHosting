@@ -22,7 +22,7 @@ namespace TravelApi.Controllers.Notify
         }
 
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         [Route("list-notification")]
         public async Task<object> Get(string idRole, Guid idEmp, bool IsSeen, int pageSize)
         {
@@ -31,7 +31,7 @@ namespace TravelApi.Controllers.Notify
         }
 
         [HttpPut]
-        [Authorize]
+        [AllowAnonymous]
         [Route("update-isSeen-notification")]
         public async Task<object> UpdateIsSeen(Guid idNotification) 
         {
@@ -40,7 +40,7 @@ namespace TravelApi.Controllers.Notify
         }
 
         [HttpDelete]
-        [Authorize]
+        [AllowAnonymous]
         [Route("delete-notification")]
         public async Task<object> Delete(Guid idNotification)
         {

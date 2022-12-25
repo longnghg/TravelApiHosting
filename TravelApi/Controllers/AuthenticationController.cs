@@ -36,6 +36,7 @@ namespace TravelApi.Controllers
         private IAuthentication authentication;
         private Response res;
         private readonly int TimeExpiredInMinutes;
+        private readonly int TimeExpiredInMinutesCus;
         private readonly IWebHostEnvironment _env;
         public AuthenticationController(IConfiguration _configuration, IAuthentication _authentication,
             IWebHostEnvironment env
@@ -45,8 +46,9 @@ namespace TravelApi.Controllers
             configuration = _configuration;
             authentication = _authentication;
             res = new Response();
-            TimeExpiredInMinutes = Convert.ToInt16(configuration["Token:TimeExpired"]);
-           
+            TimeExpiredInMinutes = Convert.ToInt16(configuration["TokenEmployee:TimeExpired"]);
+            TimeExpiredInMinutesCus = Convert.ToInt16(configuration["Token:TimeExpired"]);
+
         }
         [HttpGet("token-guess")]
 
