@@ -63,7 +63,7 @@ namespace TravelApi.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(configuration["Token:Issuer"],
-                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
+                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutesCus),
                 //configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddSeconds(25),
                 signingCredentials: signIn);
 
