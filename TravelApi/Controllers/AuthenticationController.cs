@@ -60,7 +60,7 @@ namespace TravelApi.Controllers
             {
                                         new Claim("UserId",randomId.ToString()),
                                      };
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(configuration["Token:Issuer"],
                 configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutesCus),
@@ -91,7 +91,7 @@ namespace TravelApi.Controllers
                                         new Claim(ClaimTypes.Role, result.RoleId.ToString()),
                                         new Claim("UserId", result.IdEmployee.ToString())
                                      };
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["TokenEmployee:key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["TokenEmployee:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(configuration["TokenEmployee:Issuer"],
                 configuration["TokenEmployee:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
@@ -128,7 +128,7 @@ namespace TravelApi.Controllers
                                     new Claim(ClaimTypes.Email, result.Email.ToString())
                                 };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(configuration["Token:Issuer"],
                 configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
