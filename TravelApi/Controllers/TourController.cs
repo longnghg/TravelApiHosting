@@ -94,7 +94,7 @@ namespace TravelApi.Controllers
             return Ok(res);
         }
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         [Route("list-tour-waiting")]
         public object GetWaiting( Guid idUser, int pageIndex, int pageSize)
         {
