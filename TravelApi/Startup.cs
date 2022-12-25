@@ -73,14 +73,14 @@ namespace TravelApi
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
-                    ValidAudience = Configuration["Token:Audience"],
-                    ValidIssuer = Configuration["Token:Issuer"],
+                    ValidAudience = Configuration["TokenEmployee:Audience"],
+                    ValidIssuer = Configuration["TokenEmployee:Issuer"],
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero,
                     //ClockSkew = TimeSpan.FromMinutes(Convert.ToInt16(Configuration["Token:TimeExpired"])),
                     //ClockSkew = TimeSpan.FromSeconds(2220),
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:Key"])),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["TokenEmployee:Key"])),
              
                 };
                 options.Events = new JwtBearerEvents
