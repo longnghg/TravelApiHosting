@@ -79,20 +79,20 @@ namespace TravelApi.Controllers
         {
             var claim = new[]
             {
-                                        new Claim(JwtRegisteredClaimNames.Sub, configuration["Token:Subject"]),
+                                        new Claim(JwtRegisteredClaimNames.Sub, configuration["TokenEmployee:Subject"]),
                                         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                                         new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
-                                        new Claim(JwtRegisteredClaimNames.Aud, configuration["Token:Audience"]),
+                                        new Claim(JwtRegisteredClaimNames.Aud, configuration["TokenEmployee:Audience"]),
                                         new Claim(ClaimTypes.Email, result.Email),
                                         new Claim(ClaimTypes.NameIdentifier, result.IdEmployee.ToString()),
                                         new Claim("RoleId", result.RoleId.ToString()),
                                         new Claim(ClaimTypes.Role, result.RoleId.ToString()),
                                         new Claim("UserId", result.IdEmployee.ToString())
                                      };
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["TokenEmployee:key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var token = new JwtSecurityToken(configuration["Token:Issuer"],
-                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
+            var token = new JwtSecurityToken(configuration["TokenEmployee:Issuer"],
+                configuration["TokenEmployee:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
                 //configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddSeconds(25),
                 signingCredentials: signIn);
 
