@@ -47,7 +47,7 @@ namespace TravelApi.Controllers
             authentication = _authentication;
             res = new Response();
             TimeExpiredInMinutes = Convert.ToInt16(configuration["TokenEmployee:TimeExpired"]);
-            TimeExpiredInMinutesCus = 3;//Convert.ToInt16(configuration["Token:TimeExpired"]);
+            TimeExpiredInMinutesCus = 1;//Convert.ToInt16(configuration["Token:TimeExpired"]);
 
         }
         [HttpGet("token-guess")]
@@ -131,7 +131,7 @@ namespace TravelApi.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(configuration["Token:Issuer"],
-                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes),
+                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(TimeExpiredInMinutesCus),
                 //configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(525600),
                 signingCredentials: signIn);
 
