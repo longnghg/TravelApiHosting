@@ -213,6 +213,7 @@ namespace Travel.Data.Repositories
                 cost.PriceRestaurant = restaurant.ComboPrice; // 2000000
                 cost.PriceTicketPlace = place.PriceTicket; // 10000
                 string jsonContent = JsonSerializer.Serialize(cost);
+                
                 CreateDatabase(cost);
                 // thêm schedule update giá
                 // update price
@@ -220,9 +221,9 @@ namespace Travel.Data.Repositories
              
                 var schedule = (from x in _db.Schedules.AsNoTracking()
                                 where x.IdSchedule == input.IdSchedule select x).First();
-                schedule.AdditionalPrice = cost.PriceHotelSR;
-                schedule.AdditionalPriceHoliday = (cost.PriceHotelSR + (cost.PriceHotelSR * (holidayPercent / 100)));
-                schedule.TotalCostTourNotService = cost.TotalCostTourNotService;
+                schedule.AdditionalPrice = FormatPrice(cost.PriceHotelSR);
+                schedule.AdditionalPriceHoliday = FormatPrice((cost.PriceHotelSR + (cost.PriceHotelSR * (holidayPercent / 100))));
+                schedule.TotalCostTourNotService = FormatPrice(cost.TotalCostTourNotService);
                 schedule.IsHoliday = cost.IsHoliday;
                 // số ngày đi của tour
                 int countDay = Convert.ToInt16(Ultility.CountDay(input.DepartureDate, input.ReturnDate));
@@ -234,7 +235,7 @@ namespace Travel.Data.Repositories
                 var PriceHotelDB = cost.PriceHotelDB;
                 #endregion
 
-
+                // gias khach san
                 float CostService = ((PriceHotelDB + PriceRestaurant + PriceTicketPlace) * countDay);
 
                 float VAT = (schedule.Vat);
@@ -244,17 +245,23 @@ namespace Travel.Data.Repositories
 
                 float totalPriceIncludeVAT = (totalPriceNotVatAndProfit + (totalPriceNotVatAndProfit * (VAT / 100)));
                 float FinalPrice = totalPriceIncludeVAT + (totalPriceIncludeVAT * (Profit / 100));
-                schedule.TotalCostTour = totalPriceNotVatAndProfit;
-                schedule.FinalPrice = FinalPrice;
-                schedule.FinalPriceHoliday = FinalPrice + (FinalPrice * (holidayPercent / 100));
+
+                #region format gia
+
+               
+                #endregion
+
+                schedule.TotalCostTour = FormatPrice(totalPriceNotVatAndProfit);
+                schedule.FinalPrice = FormatPrice(FinalPrice);
+                schedule.FinalPriceHoliday = FormatPrice(FinalPrice + (FinalPrice * (holidayPercent / 100)));
 
                 schedule.PriceAdult = schedule.FinalPrice;
-                schedule.PriceChild = schedule.PriceAdult - (schedule.PriceAdult*50/100);
+                schedule.PriceChild = FormatPrice(schedule.PriceAdult - (schedule.PriceAdult*50/100));
                 schedule.PriceBaby = 0;
 
 
                 schedule.PriceAdultHoliday = schedule.FinalPriceHoliday;
-                schedule.PriceChildHoliday = schedule.PriceAdultHoliday - (schedule.PriceAdultHoliday * 50 / 100);
+                schedule.PriceChildHoliday = FormatPrice(schedule.PriceAdultHoliday - (schedule.PriceAdultHoliday * 50 / 100));
                 schedule.PriceBabyHoliday = 0;
 
                 UpdateDatabaseSchedule(schedule);
@@ -273,6 +280,26 @@ namespace Travel.Data.Repositories
 
                 return Ultility.Responses("Có lỗi xảy ra !", Enums.TypeCRUD.Error.ToString(), description: e.Message);
             }
+        }
+
+        private float FormatPrice(float price)
+        {
+            string formattedNumber = price.ToString("N0");
+            var arrrrr = formattedNumber.Split(",");
+            var replaceNumberEnd = arrrrr[arrrrr.Length - 1];
+            replaceNumberEnd = "000";
+            int lengthArr = arrrrr.Length;
+            StringBuilder strBuilder = new StringBuilder();
+            for (int i = 0; i < lengthArr; i++)
+            {
+                if (i == lengthArr - 1)
+                {
+                    arrrrr[i] = replaceNumberEnd;
+                }
+                strBuilder.Append(arrrrr[i]);
+            }
+            price = float.Parse(strBuilder.ToString());
+            return price;
         }
 
         public Response Get()
@@ -355,9 +382,9 @@ namespace Travel.Data.Repositories
                 var schedule = (from x in _db.Schedules.AsNoTracking()
                                 where x.IdSchedule == input.IdSchedule
                                 select x).First();
-                schedule.AdditionalPrice = cost.PriceHotelSR;
-                schedule.AdditionalPriceHoliday = (cost.PriceHotelSR + (cost.PriceHotelSR * (holidayPercent / 100)));
-                schedule.TotalCostTourNotService = cost.TotalCostTourNotService;
+                schedule.AdditionalPrice = FormatPrice(cost.PriceHotelSR);
+                schedule.AdditionalPriceHoliday = FormatPrice(cost.PriceHotelSR + (cost.PriceHotelSR * (holidayPercent / 100)));
+                schedule.TotalCostTourNotService = FormatPrice(cost.TotalCostTourNotService);
                 schedule.IsHoliday = cost.IsHoliday;
                 // số ngày đi của tour
                 int countDay = Convert.ToInt16(Ultility.CountDay(input.DepartureDate, input.ReturnDate));
@@ -370,27 +397,27 @@ namespace Travel.Data.Repositories
                 #endregion
 
 
-                float CostService = ((PriceHotelDB + PriceRestaurant + PriceTicketPlace) * countDay);
+                float CostService = FormatPrice(((PriceHotelDB + PriceRestaurant + PriceTicketPlace) * countDay));
 
                 float VAT = (schedule.Vat);
                 float Profit = (schedule.Profit);
-                float totalPriceNotVatAndProfit = cost.TotalCostTourNotService + CostService;
+                float totalPriceNotVatAndProfit = FormatPrice(cost.TotalCostTourNotService + CostService);
 
 
                 float totalPriceIncludeVAT = (totalPriceNotVatAndProfit + (totalPriceNotVatAndProfit * (VAT / 100)));
                 float FinalPrice = totalPriceIncludeVAT + (totalPriceIncludeVAT * (Profit / 100));
-                schedule.TotalCostTour = totalPriceNotVatAndProfit;
-                schedule.FinalPrice = FinalPrice;
-                schedule.FinalPriceHoliday = FinalPrice + (FinalPrice * (holidayPercent / 100));
+                schedule.TotalCostTour = FormatPrice(totalPriceNotVatAndProfit);
+                schedule.FinalPrice = FormatPrice(FinalPrice);
+                schedule.FinalPriceHoliday = FormatPrice(FinalPrice + (FinalPrice * (holidayPercent / 100)));
 
 
                 schedule.PriceAdult = schedule.FinalPrice;
-                schedule.PriceChild = schedule.PriceAdult - (schedule.PriceAdult * 50 / 100);
+                schedule.PriceChild = FormatPrice(schedule.PriceAdult - (schedule.PriceAdult * 50 / 100));
                 schedule.PriceBaby = 0;
 
 
                 schedule.PriceAdultHoliday = schedule.FinalPriceHoliday;
-                schedule.PriceChildHoliday = schedule.PriceAdultHoliday - (schedule.PriceAdultHoliday * 50 / 100);
+                schedule.PriceChildHoliday = FormatPrice(schedule.PriceAdultHoliday - (schedule.PriceAdultHoliday * 50 / 100));
                 schedule.PriceBabyHoliday = 0;
 
                 UpdateDatabaseSchedule(schedule);

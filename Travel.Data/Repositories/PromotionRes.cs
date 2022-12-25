@@ -377,7 +377,7 @@ namespace Travel.Data.Repositories
                 bool result = _log.AddLog(content: jsonContent, type: "update", emailCreator: emailUser, classContent: "Promotion");
                 if (result)
                 {
-                    return Ultility.Responses("Đã gửi yêu cầu sửa !", Enums.TypeCRUD.Success.ToString());
+                    return Ultility.Responses("Đã sửa !", Enums.TypeCRUD.Success.ToString());
 
                 }
                 else

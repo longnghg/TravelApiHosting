@@ -109,6 +109,7 @@ namespace Travel.Shared.Ultilities
         }
         public static string GenerateId(string phraseName)
         {
+            phraseName = Regex.Replace(phraseName, @"\s+", " ");
             string[] words = phraseName.Split(' ');
             var resultString = new StringBuilder();
             foreach (var word in words)
