@@ -131,7 +131,7 @@ namespace TravelApi.Controllers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(configuration["Token:Issuer"],
-                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddSeconds(30),
+                configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(1),
                 //configuration["Token:Audience"], claim, expires: DateTime.UtcNow.AddMinutes(525600),
                 signingCredentials: signIn);
 
@@ -150,7 +150,7 @@ namespace TravelApi.Controllers
                 IsUsed = false,
                 IsRevoked = false,
                 IssuedAt = DateTime.UtcNow,
-                ExpriedAt = DateTime.UtcNow.AddMinutes(TimeExpiredInMinutes)
+                ExpriedAt = DateTime.UtcNow.AddMinutes(1)
             };
             var statusAddRefreshToken = await authentication.AddRefeshToken(refreshToeknEntity);
             if (!statusAddRefreshToken)
