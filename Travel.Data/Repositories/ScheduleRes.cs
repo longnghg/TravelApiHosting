@@ -1539,12 +1539,12 @@ namespace Travel.Data.Repositories
         {
             try
             {
-                #region check cache
-                if (_cache.Get<Response>($"scheduleflashsale") != null) // có cache
-                {
-                    return _cache.Get<Response>($"scheduleflashsale");
-                }
-                #endregion
+                //#region check cache
+                //if (_cache.Get<Response>($"scheduleflashsale") != null) // có cache
+                //{
+                //    return _cache.Get<Response>($"scheduleflashsale");
+                //}
+                //#endregion
                 var dateTimeNow = GetDateTimeNow();
                 var flashSaleDay = Ultility.ConvertDatetimeToUnixTimeStampMiliSecond(Ultility.GetDateZeroTime(DateTime.Now.AddDays(3))); // sau này gắn config
                 var list = await (from s in _db.Schedules.AsNoTracking()
@@ -1615,7 +1615,7 @@ namespace Travel.Data.Repositories
 
                 var result = Mapper.MapSchedule(list).Skip(pageSize * (pageIndex - 1)).Take(pageSize).ToList();
                 var res = Ultility.Responses("", Enums.TypeCRUD.Success.ToString(), result);
-                _cache.Set(res, $"scheduleflashsale");
+                //_cache.Set(res, $"scheduleflashsale");
                 res.TotalResult = result.Count();
                 return res;
 
